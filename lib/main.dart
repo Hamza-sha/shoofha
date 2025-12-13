@@ -8,8 +8,15 @@ import 'package:shoofha/app/theme/app_theme.dart';
 import 'package:shoofha/core/localization/app_localizations.dart';
 import 'package:shoofha/features/settings/application/settings_controller.dart';
 
-void main() {
+// ✅ جديد: استرجاع حالة تسجيل الدخول والاهتمامات قبل تشغيل التطبيق
+import 'package:shoofha/features/auth/application/auth_notifier.dart';
+
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // ✅ مهم: restore لحالة Auth قبل ما يشتغل router redirects
+  await authNotifier.restore();
+
   runApp(const ProviderScope(child: ShoofhaApp()));
 }
 
@@ -118,7 +125,6 @@ class _SettingsErrorScreen extends StatelessWidget {
     return Scaffold(
       body: Center(
         child: Padding(
-          // هذا padding منطقي، مش مرتبط بقياس شاشة معيّن
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             mainAxisSize: MainAxisSize.min,

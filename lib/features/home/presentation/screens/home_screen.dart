@@ -19,7 +19,6 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   final PageController _pageController = PageController();
-  int _currentIndex = 0;
   HomeFeedTab _currentTab = HomeFeedTab.explore;
 
   final List<_Reel> _dummyReels = [
@@ -94,6 +93,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Future<void> _toggleLike(_Reel reel, BuildContext context) async {
     final allowed = await requireLogin(context);
     if (!allowed) return;
+    if (!mounted) return;
+
     HapticFeedback.lightImpact();
     ref.read(reactionsControllerProvider.notifier).toggleLike(reel.storeId);
   }
@@ -101,6 +102,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Future<void> _toggleSave(_Reel reel, BuildContext context) async {
     final allowed = await requireLogin(context);
     if (!allowed) return;
+    if (!mounted) return;
+
     HapticFeedback.lightImpact();
     ref.read(reactionsControllerProvider.notifier).toggleSave(reel.storeId);
   }
@@ -126,9 +129,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               controller: _pageController,
               scrollDirection: Axis.vertical,
               itemCount: _dummyReels.length,
-              onPageChanged: (index) {
-                setState(() => _currentIndex = index);
-              },
               itemBuilder: (context, index) {
                 final reel = _dummyReels[index];
                 final isLiked = _isLiked(reel);
@@ -142,8 +142,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                       colors: [
-                        reel.color.withOpacity(0.85),
-                        Colors.black.withOpacity(0.96),
+                        reel.color.withValues(alpha: 0.85),
+                        Colors.black.withValues(alpha: 0.96),
                       ],
                     ),
                   ),
@@ -187,8 +187,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                           reel.category,
                                           style: theme.textTheme.bodySmall
                                               ?.copyWith(
-                                                color: Colors.white.withOpacity(
-                                                  0.8,
+                                                color: Colors.white.withValues(
+                                                  alpha: 0.80,
                                                 ),
                                               ),
                                         ),
@@ -222,7 +222,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 Text(
                                   reel.subtitle,
                                   style: theme.textTheme.bodyMedium?.copyWith(
-                                    color: Colors.white.withOpacity(0.9),
+                                    color: Colors.white.withValues(alpha: 0.90),
                                   ),
                                   textAlign: TextAlign.right,
                                 ),
@@ -236,7 +236,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                         vertical: h * 0.006,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: Colors.black.withOpacity(0.55),
+                                        color: Colors.black.withValues(
+                                          alpha: 0.55,
+                                        ),
                                         borderRadius: BorderRadius.circular(
                                           h * 0.016,
                                         ),
@@ -368,11 +370,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                   ),
                   const Spacer(),
-
                   Container(
                     padding: EdgeInsets.all(h * 0.006),
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.55),
+                      color: Colors.black.withValues(alpha: 0.55),
                       borderRadius: BorderRadius.circular(h * 0.018),
                     ),
                     child: Row(
@@ -396,20 +397,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ],
                     ),
                   ),
-
                   SizedBox(width: w * 0.04),
-
                   InkWell(
                     onTap: () async {
                       final allowed = await requireLogin(context);
                       if (!allowed) return;
+                      if (!mounted) return;
+
                       context.pushNamed('messages');
                     },
                     borderRadius: BorderRadius.circular(h * 0.014),
                     child: Container(
                       padding: EdgeInsets.all(h * 0.008),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.35),
+                        color: Colors.black.withValues(alpha: 0.35),
                         borderRadius: BorderRadius.circular(h * 0.014),
                       ),
                       child: Icon(
@@ -499,7 +500,7 @@ class _CircleIconButton extends StatelessWidget {
             padding: EdgeInsets.all(h * 0.012),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: Colors.black.withOpacity(0.55),
+              color: Colors.black.withValues(alpha: 0.55),
             ),
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 160),

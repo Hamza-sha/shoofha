@@ -7,7 +7,7 @@ class NotificationsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final _ = Theme.of(context);
     final w = Responsive.width(context);
     final h = Responsive.height(context);
 
@@ -107,7 +107,6 @@ class _NotificationCard extends StatelessWidget {
       case _NotificationType.message:
         return Icons.chat_bubble_outline_rounded;
       case _NotificationType.system:
-      default:
         return Icons.info_outline_rounded;
     }
   }
@@ -121,7 +120,6 @@ class _NotificationCard extends StatelessWidget {
       case _NotificationType.message:
         return AppColors.purple;
       case _NotificationType.system:
-      default:
         return AppColors.navy;
     }
   }
@@ -168,7 +166,6 @@ class _NotificationCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // العنوان + الوقت
                 Row(
                   children: [
                     Expanded(

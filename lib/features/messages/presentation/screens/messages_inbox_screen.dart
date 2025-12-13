@@ -12,8 +12,7 @@ class MessagesInboxScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final w = Responsive.width(context);
     final h = Responsive.height(context);
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
+    final _ = Theme.of(context);
 
     final conversations = _dummyConversations;
     final isEmpty = conversations.isEmpty;
@@ -96,7 +95,6 @@ class _EmptyInbox extends StatelessWidget {
               height: h * 0.055,
               child: FilledButton(
                 onPressed: () {
-                  // نرجع على الهوم / الاكسبلور
                   context.go('/app');
                 },
                 child: const Text('استكشف العروض'),
@@ -128,6 +126,7 @@ class _ConversationTile extends StatelessWidget {
       onTap: () async {
         final allowed = await requireLogin(context);
         if (!allowed) return;
+        if (!context.mounted) return;
 
         context.pushNamed('chat', pathParameters: {'id': conversation.id});
       },
@@ -151,7 +150,6 @@ class _ConversationTile extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // أفاتار المتجر
             Container(
               width: h * 0.06,
               height: h * 0.06,
@@ -169,12 +167,10 @@ class _ConversationTile extends StatelessWidget {
               ),
             ),
             SizedBox(width: w * 0.03),
-            // النصوص
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // السطر الأول: الاسم + الوقت
                   Row(
                     children: [
                       Expanded(
@@ -199,7 +195,6 @@ class _ConversationTile extends StatelessWidget {
                     ],
                   ),
                   SizedBox(height: h * 0.004),
-                  // آخر رسالة
                   Text(
                     conversation.lastMessage,
                     style: theme.textTheme.bodyMedium?.copyWith(
@@ -214,7 +209,6 @@ class _ConversationTile extends StatelessWidget {
               ),
             ),
             SizedBox(width: w * 0.02),
-            // عدد الرسائل الغير مقروءة
             if (hasUnread)
               Container(
                 padding: EdgeInsets.symmetric(
@@ -258,7 +252,6 @@ class _Conversation {
   });
 }
 
-/// محادثات تجريبية
 final List<_Conversation> _dummyConversations = [
   _Conversation(
     id: 'coffee-mood',

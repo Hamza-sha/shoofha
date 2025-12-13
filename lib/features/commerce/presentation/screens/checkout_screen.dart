@@ -23,6 +23,7 @@ class CheckoutScreen extends ConsumerWidget {
     final w = Responsive.width(context);
     final h = Responsive.height(context);
     final cs = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -35,7 +36,7 @@ class CheckoutScreen extends ConsumerWidget {
                   child: Text(
                     'لا يوجد عناصر في السلة لإتمام الطلب.',
                     textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -51,7 +52,7 @@ class CheckoutScreen extends ConsumerWidget {
                   children: [
                     Text(
                       'عنوان التوصيل',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -64,7 +65,7 @@ class CheckoutScreen extends ConsumerWidget {
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.04),
+                            color: Colors.black.withValues(alpha: 0.04),
                             blurRadius: 8,
                             offset: const Offset(0, 3),
                           ),
@@ -81,7 +82,7 @@ class CheckoutScreen extends ConsumerWidget {
                           Expanded(
                             child: Text(
                               'عمّان، الأردن\nيمكنك لاحقاً ربطه بعنوان المستخدم من البروفايل.',
-                              style: Theme.of(context).textTheme.bodyMedium,
+                              style: theme.textTheme.bodyMedium,
                             ),
                           ),
                           TextButton(
@@ -91,74 +92,74 @@ class CheckoutScreen extends ConsumerWidget {
                         ],
                       ),
                     ),
+
                     SizedBox(height: h * 0.025),
 
                     Text(
                       'المنتجات',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    SizedBox(height: h * 0.008),
+                    SizedBox(height: h * 0.010),
 
-                    ListView.separated(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: cartItems.length,
-                      separatorBuilder: (_, __) => SizedBox(height: h * 0.01),
-                      itemBuilder: (context, index) {
-                        final item = cartItems[index];
-                        final product = item.product;
+                    ...cartItems.map((item) {
+                      final store = kStores.firstWhere(
+                        (s) => s.id == item.product.storeId,
+                        orElse: () => StoreModel(
+                          id: 'unknown',
+                          name: 'متجر',
+                          category: '',
+                          rating: 0,
+                          distanceKm: 0,
+                          color: cs.primary,
+                        ),
+                      );
 
-                        StoreModel? store;
-                        try {
-                          store = kStores.firstWhere(
-                            (s) => s.id == product.storeId,
-                          );
-                        } catch (_) {
-                          store = null;
-                        }
-
-                        return _CheckoutItemTile(
-                          product: product,
+                      return Padding(
+                        padding: EdgeInsets.only(bottom: h * 0.010),
+                        child: _CheckoutItemTile(
+                          product: item.product,
                           quantity: item.quantity,
-                          storeName: store?.name ?? 'متجر',
-                        );
-                      },
-                    ),
+                          storeName: store.name,
+                        ),
+                      );
+                    }),
 
-                    SizedBox(height: h * 0.025),
+                    SizedBox(height: h * 0.02),
 
                     Text(
                       'طريقة الدفع',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    SizedBox(height: h * 0.008),
+                    SizedBox(height: h * 0.010),
+
                     Container(
                       width: double.infinity,
                       padding: EdgeInsets.all(w * 0.035),
                       decoration: BoxDecoration(
                         color: cs.surface,
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: cs.primary.withOpacity(0.4)),
+                        border: Border.all(
+                          color: cs.outline.withValues(alpha: 0.25),
+                        ),
                       ),
                       child: Row(
                         children: [
-                          Icon(
-                            Icons.money_rounded,
-                            color: cs.primary,
-                            size: w * 0.07,
-                          ),
+                          Icon(Icons.payments_outlined, color: cs.primary),
                           SizedBox(width: w * 0.03),
                           Expanded(
                             child: Text(
                               'الدفع عند الاستلام',
-                              style: Theme.of(context).textTheme.bodyMedium,
+                              style: theme.textTheme.bodyMedium,
                             ),
                           ),
-                          const Icon(Icons.check_circle, color: Colors.green),
+                          Icon(
+                            Icons.check_circle,
+                            color: Colors.green.withValues(alpha: 0.95),
+                          ),
                         ],
                       ),
                     ),
@@ -178,7 +179,7 @@ class CheckoutScreen extends ConsumerWidget {
                   color: cs.surface,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.06),
+                      color: Colors.black.withValues(alpha: 0.06),
                       blurRadius: 8,
                       offset: const Offset(0, -2),
                     ),
@@ -197,7 +198,6 @@ class CheckoutScreen extends ConsumerWidget {
                       isBold: true,
                     ),
                     SizedBox(height: h * 0.015),
-
                     SizedBox(
                       width: double.infinity,
                       child: FilledButton(
@@ -244,13 +244,14 @@ class _CheckoutItemTile extends StatelessWidget {
     final w = Responsive.width(context);
     final h = Responsive.height(context);
     final cs = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
 
     return Container(
       padding: EdgeInsets.all(w * 0.03),
       decoration: BoxDecoration(
         color: cs.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: cs.outline.withOpacity(0.3)),
+        border: Border.all(color: cs.outline.withValues(alpha: 0.30)),
       ),
       child: Row(
         children: [
@@ -261,8 +262,8 @@ class _CheckoutItemTile extends StatelessWidget {
               shape: BoxShape.circle,
               gradient: LinearGradient(
                 colors: [
-                  product.color.withOpacity(0.9),
-                  product.color.withOpacity(0.6),
+                  product.color.withValues(alpha: 0.90),
+                  product.color.withValues(alpha: 0.60),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -270,11 +271,11 @@ class _CheckoutItemTile extends StatelessWidget {
             ),
             child: Center(
               child: Text(
-                product.name.characters.first,
+                product.name.isNotEmpty ? product.name.characters.first : '?',
                 style: TextStyle(
                   fontSize: w * 0.05,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: Colors.white.withValues(alpha: 0.98),
                 ),
               ),
             ),
@@ -288,23 +289,23 @@ class _CheckoutItemTile extends StatelessWidget {
                   product.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 SizedBox(height: h * 0.003),
                 Text(
                   storeName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: cs.primary.withOpacity(0.7),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: cs.primary.withValues(alpha: 0.75),
                   ),
                 ),
                 SizedBox(height: h * 0.003),
                 Text(
                   '${product.price.toStringAsFixed(2)} د.أ للقطعة',
-                  style: Theme.of(context).textTheme.bodySmall,
+                  style: theme.textTheme.bodySmall,
                 ),
               ],
             ),
@@ -313,13 +314,13 @@ class _CheckoutItemTile extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text('x$quantity', style: Theme.of(context).textTheme.bodyMedium),
+              Text('x$quantity', style: theme.textTheme.bodyMedium),
               SizedBox(height: h * 0.003),
               Text(
                 '${(product.price * quantity).toStringAsFixed(2)} د.أ',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ],
           ),
@@ -342,21 +343,21 @@ class _SummaryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
+    final theme = Theme.of(context);
 
-    final textStyle = isBold
-        ? textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)
-        : textTheme.bodyMedium;
-
-    final valueStyle = isBold
-        ? textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)
-        : textTheme.bodyMedium;
+    final style =
+        (isBold
+                ? theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  )
+                : theme.textTheme.bodyMedium)
+            ?.copyWith(height: 1.2);
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: textStyle),
-        Text('${value.toStringAsFixed(2)} د.أ', style: valueStyle),
+        Text(label, style: style),
+        Text('${value.toStringAsFixed(2)} د.أ', style: style),
       ],
     );
   }

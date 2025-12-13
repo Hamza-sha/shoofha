@@ -71,8 +71,8 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
                     shape: BoxShape.circle,
                     gradient: LinearGradient(
                       colors: [
-                        product.color.withOpacity(0.9),
-                        product.color.withOpacity(0.6),
+                        product.color.withValues(alpha: 0.90),
+                        product.color.withValues(alpha: 0.60),
                       ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
@@ -86,7 +86,7 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
                       style: TextStyle(
                         fontSize: w * 0.12,
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        color: Colors.white.withValues(alpha: 0.98),
                       ),
                     ),
                   ),
@@ -141,9 +141,7 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
                       IconButton(
                         onPressed: () {
                           if (_quantity > 1) {
-                            setState(() {
-                              _quantity--;
-                            });
+                            setState(() => _quantity--);
                           }
                         },
                         icon: const Icon(Icons.remove_circle_outline),
@@ -157,9 +155,7 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
                       ),
                       IconButton(
                         onPressed: () {
-                          setState(() {
-                            _quantity++;
-                          });
+                          setState(() => _quantity++);
                         },
                         icon: const Icon(Icons.add_circle_outline),
                       ),
@@ -175,6 +171,7 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
                   onPressed: () async {
                     final ok = await requireLogin(context);
                     if (!ok) return;
+                    if (!mounted) return;
 
                     // أضف المنتج للسلة عبر CartController باستخدام Riverpod
                     ref
