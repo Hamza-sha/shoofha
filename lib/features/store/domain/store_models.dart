@@ -8,7 +8,7 @@ class StoreModel {
   final double distanceKm;
   final Color color; // لون مميز لكل متجر
 
-  StoreModel({
+  const StoreModel({
     required this.id,
     required this.name,
     required this.category,
@@ -26,7 +26,7 @@ class StoreProduct {
   final double price;
   final Color color;
 
-  StoreProduct({
+  const StoreProduct({
     required this.id,
     required this.storeId,
     required this.name,
@@ -37,101 +37,110 @@ class StoreProduct {
 }
 
 /// متاجر تجريبية
-final List<StoreModel> kStores = [
+const List<StoreModel> kStores = [
   StoreModel(
     id: 'coffee-mood',
     name: 'Coffee Mood',
     category: 'كافيه',
     rating: 4.7,
     distanceKm: 1.3,
-    color: const Color(0xFF6A1B9A),
+    color: Color(0xFF6A1B9A),
   ),
   StoreModel(
     id: 'fit-zone',
-    name: 'FitZone Gym',
+    name: 'Fit Zone Gym',
     category: 'نادي رياضي',
-    rating: 4.6,
-    distanceKm: 3.2,
-    color: const Color(0xFF1B5E20),
+    rating: 4.5,
+    distanceKm: 2.8,
+    color: Color(0xFF1B5E20),
   ),
   StoreModel(
-    id: 'tech-corner',
-    name: 'Tech Corner',
-    category: 'الكترونيات',
-    rating: 4.5,
-    distanceKm: 4.8,
-    color: const Color(0xFF0D47A1),
+    id: 'pizza-house',
+    name: 'Pizza House',
+    category: 'مطعم بيتزا',
+    rating: 4.6,
+    distanceKm: 0.9,
+    color: Color(0xFFD32F2F),
   ),
 ];
 
-/// منتجات تجريبية للمتاجر
-final List<StoreProduct> kStoreProducts = [
+/// منتجات تجريبية لكل متجر
+const List<StoreProduct> kStoreProducts = [
+  // Coffee Mood
   StoreProduct(
-    id: 'coffee-latte',
+    id: 'coffee-latte-hazelnut',
     storeId: 'coffee-mood',
-    name: 'آيس لاتيه',
-    description: 'قهوة لاتيه باردة مع حليب طازج ونكهة فانيلا.',
-    price: 2.5,
-    color: const Color(0xFF6A1B9A),
+    name: 'لاتيه بالبندق',
+    description: 'قهوة اسبريسو مع حليب وبندق محمّص، ساخنة أو مثلّجة.',
+    price: 3.25,
+    color: Color(0xFF8D6E63),
   ),
   StoreProduct(
-    id: 'coffee-caramel',
+    id: 'coffee-spanish',
     storeId: 'coffee-mood',
-    name: 'كاراميل ماكياتو',
-    description: 'إسبريسو مع حليب وكاراميل غني.',
-    price: 3.0,
-    color: const Color(0xFFAB47BC),
+    name: 'سبانيش لاتيه',
+    description: 'مزيج قهوة غني مع حليب مكثّف وسيرب خاص.',
+    price: 3.75,
+    color: Color(0xFF5D4037),
   ),
   StoreProduct(
-    id: 'gym-month',
+    id: 'coffee-cold-brew',
+    storeId: 'coffee-mood',
+    name: 'كولد برو',
+    description: 'قهوة كولد برو من حبوب مختارة، منعشة ومركزة.',
+    price: 3.00,
+    color: Color(0xFF3E2723),
+  ),
+
+  // Fit Zone Gym
+  StoreProduct(
+    id: 'fit-monthly-basic',
     storeId: 'fit-zone',
-    name: 'اشتراك شهر',
-    description: 'اشتراك شهر كامل مع دخول غير محدود للنادي.',
+    name: 'اشتراك شهري أساسي',
+    description: 'دخول غير محدود للنادي خلال أوقات العمل.',
+    price: 25.0,
+    color: Color(0xFF1B5E20),
+  ),
+  StoreProduct(
+    id: 'fit-monthly-plus',
+    storeId: 'fit-zone',
+    name: 'اشتراك شهري + حصص',
+    description: 'يشمل حصص كروس فت وزومبا أسبوعية.',
     price: 35.0,
-    color: const Color(0xFF1B5E20),
+    color: Color(0xFF2E7D32),
   ),
   StoreProduct(
-    id: 'gym-3months',
+    id: 'fit-personal-session',
     storeId: 'fit-zone',
-    name: 'اشتراك 3 أشهر',
-    description: 'عرض خاص على اشتراك 3 أشهر.',
-    price: 90.0,
-    color: const Color(0xFF388E3C),
+    name: 'جلسة تدريب شخصي',
+    description: 'جلسة واحدة مع مدرب شخصي مع خطة مخصصة.',
+    price: 12.0,
+    color: Color(0xFF388E3C),
+  ),
+
+  // Pizza House
+  StoreProduct(
+    id: 'pizza-family-offer',
+    storeId: 'pizza-house',
+    name: 'عرض العائلة',
+    description: '2 بيتزا كبيرة + مشروبات + صوصات خاصة.',
+    price: 14.99,
+    color: Color(0xFFD32F2F),
   ),
   StoreProduct(
-    id: 'earbuds-pro',
-    storeId: 'tech-corner',
-    name: 'سماعات لاسلكية Pro',
-    description: 'سماعات بجودة عالية وعزل ضوضاء.',
-    price: 49.0,
-    color: const Color(0xFF0D47A1),
+    id: 'pizza-margherita',
+    storeId: 'pizza-house',
+    name: 'بيتزا مارجريتا',
+    description: 'جبنة موزاريلا طازجة مع صوص طماطم إيطالي.',
+    price: 6.50,
+    color: Color(0xFFC62828),
   ),
   StoreProduct(
-    id: 'power-bank',
-    storeId: 'tech-corner',
-    name: 'باور بانك 20,000mAh',
-    description: 'شحن سريع مع سعة كبيرة.',
-    price: 29.0,
-    color: const Color(0xFF1976D2),
+    id: 'pizza-pepperoni',
+    storeId: 'pizza-house',
+    name: 'بيتزا بيبروني',
+    description: 'مغطاة بشرائح بيبروني حارة وجبنة موزاريلا.',
+    price: 7.25,
+    color: Color(0xFFB71C1C),
   ),
 ];
-
-StoreModel? getStoreById(String id) {
-  try {
-    return kStores.firstWhere((s) => s.id == id);
-  } catch (_) {
-    return null;
-  }
-}
-
-StoreProduct? getProductById(String id) {
-  try {
-    return kStoreProducts.firstWhere((p) => p.id == id);
-  } catch (_) {
-    return null;
-  }
-}
-
-List<StoreProduct> getProductsForStore(String storeId) {
-  return kStoreProducts.where((p) => p.storeId == storeId).toList();
-}

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shoofha/core/theme/app_colors.dart';
+import 'package:shoofha/core/responsive/responsive.dart';
 
 class NotificationsScreen extends StatelessWidget {
   const NotificationsScreen({super.key});
@@ -7,147 +8,83 @@ class NotificationsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final size = MediaQuery.sizeOf(context);
-    final width = size.width;
-    final height = size.height;
+    final w = Responsive.width(context);
+    final h = Responsive.height(context);
 
-    final horizontalPadding = width * 0.06;
-    final vSpaceMd = height * 0.024;
+    final notifications = _dummyNotifications;
+    final isEmpty = notifications.isEmpty;
 
-    // بيانات تجريبية مؤقتاً (لحد ما نربط API / Backend)
-    final todayNotifications = [
-      _NotificationItem(
-        title: 'طلبك رقم #SH-1024 تم تأكيده',
-        body: 'المتجر يستعد لتحضير طلبك الآن 👌',
-        timeLabel: 'منذ 10 دقائق',
-        isUnread: true,
-      ),
-      _NotificationItem(
-        title: 'عرض جديد من Coffee Mood',
-        body: 'خصم 20% على جميع المشروبات حتى نهاية اليوم.',
-        timeLabel: 'منذ ساعة',
-        isUnread: true,
-      ),
-    ];
-
-    final olderNotifications = [
-      _NotificationItem(
-        title: 'تم توصيل طلبك بنجاح',
-        body: 'نتمنى أن تكون تجربتك مميزة مع Shoofha ✨',
-        timeLabel: 'أمس',
-        isUnread: false,
-      ),
-      _NotificationItem(
-        title: 'حفظنا متجرك المفضل',
-        body: 'تمت إضافة Coffee Mood إلى المفضلة.',
-        timeLabel: 'منذ يومين',
-        isUnread: false,
-      ),
-    ];
-
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      body: SafeArea(
-        child: Column(
-          children: [
-            const _NotificationsHeader(),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.symmetric(
-                  horizontal: horizontalPadding,
-                  vertical: vSpaceMd,
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        appBar: AppBar(title: const Text('الإشعارات'), centerTitle: true),
+        body: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: w * 0.06,
+            vertical: h * 0.015,
+          ),
+          child: isEmpty
+              ? _EmptyNotifications()
+              : ListView.separated(
+                  itemCount: notifications.length,
+                  separatorBuilder: (_, __) => SizedBox(height: h * 0.012),
+                  itemBuilder: (context, index) {
+                    final item = notifications[index];
+                    return _NotificationCard(item: item);
+                  },
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (todayNotifications.isNotEmpty) ...[
-                      _SectionLabel(text: 'اليوم'),
-                      SizedBox(height: height * 0.012),
-                      ...todayNotifications.map(
-                        (n) => _NotificationCard(item: n),
-                      ),
-                      SizedBox(height: vSpaceMd),
-                    ],
-                    if (olderNotifications.isNotEmpty) ...[
-                      _SectionLabel(text: 'الأيام السابقة'),
-                      SizedBox(height: height * 0.012),
-                      ...olderNotifications.map(
-                        (n) => _NotificationCard(item: n),
-                      ),
-                    ],
-                    if (todayNotifications.isEmpty &&
-                        olderNotifications.isEmpty)
-                      _EmptyState(height: height),
-                  ],
-                ),
-              ),
-            ),
-          ],
         ),
       ),
     );
   }
 }
 
-/// هيدر الشاشة – Gradient + Back + أيقونة جرس
-class _NotificationsHeader extends StatelessWidget {
-  const _NotificationsHeader();
-
+class _EmptyNotifications extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final size = MediaQuery.sizeOf(context);
-    final width = size.width;
-    final height = size.height;
+    final h = Responsive.height(context);
+    final w = Responsive.width(context);
 
-    final headerHeight = height * 0.19;
-
-    return Container(
-      height: headerHeight,
-      width: double.infinity,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [AppColors.navy, AppColors.purple],
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-        ),
-      ),
+    return Center(
       child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: width * 0.06,
-          vertical: height * 0.02,
-        ),
+        padding: EdgeInsets.symmetric(horizontal: w * 0.12),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // Back + bell icon
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _backButton(context),
-                Icon(
-                  Icons.notifications_none_outlined,
-                  color: Colors.white.withOpacity(.9),
-                  size: height * 0.032,
+            Container(
+              width: h * 0.18,
+              height: h * 0.18,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [AppColors.navy, AppColors.purple],
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
                 ),
-              ],
-            ),
-            const Spacer(),
-            Text(
-              'الإشعارات',
-              style: theme.textTheme.titleLarge?.copyWith(
+              ),
+              child: Icon(
+                Icons.notifications_none_rounded,
                 color: Colors.white,
-                fontWeight: FontWeight.w800,
-                fontSize: height * 0.030,
+                size: h * 0.08,
               ),
             ),
-            SizedBox(height: height * 0.006),
+            SizedBox(height: h * 0.02),
             Text(
-              'كل جديد يصلك من المتاجر والطلبات في مكان واحد.',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: Colors.white.withOpacity(.88),
-                fontSize: height * 0.017,
+              'ما في إشعارات حالياً',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
               ),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: h * 0.008),
+            Text(
+              'أول ما يصير شيء جديد بخصوص طلباتك أو المتاجر اللي تتابعها، رح نخبرك هون 😉',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.textTheme.bodyMedium?.color?.withOpacity(0.75),
+                height: 1.4,
+              ),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
@@ -156,248 +93,194 @@ class _NotificationsHeader extends StatelessWidget {
   }
 }
 
-Widget _backButton(BuildContext context) {
-  final height = MediaQuery.sizeOf(context).height;
-
-  return Container(
-    decoration: BoxDecoration(
-      color: Colors.white.withOpacity(.15),
-      borderRadius: BorderRadius.circular(height * 0.014),
-    ),
-    child: IconButton(
-      icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
-      onPressed: () => Navigator.of(context).maybePop(),
-    ),
-  );
-}
-
-/// Label للفصل بين "اليوم" و "الأيام السابقة"
-class _SectionLabel extends StatelessWidget {
-  final String text;
-
-  const _SectionLabel({required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final size = MediaQuery.sizeOf(context);
-    final height = size.height;
-
-    return Row(
-      children: [
-        Container(
-          width: height * 0.010,
-          height: height * 0.010,
-          decoration: BoxDecoration(
-            color: AppColors.teal,
-            borderRadius: BorderRadius.circular(999),
-          ),
-        ),
-        SizedBox(width: size.width * 0.018),
-        Text(
-          text,
-          style: theme.textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: AppColors.navy,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// موديل بسيط للإشعار (داخلي للملف)
-class _NotificationItem {
-  final String title;
-  final String body;
-  final String timeLabel;
-  final bool isUnread;
-
-  const _NotificationItem({
-    required this.title,
-    required this.body,
-    required this.timeLabel,
-    required this.isUnread,
-  });
-}
-
-/// كرت إشعار فردي
 class _NotificationCard extends StatelessWidget {
   final _NotificationItem item;
 
   const _NotificationCard({required this.item});
 
+  IconData get _icon {
+    switch (item.type) {
+      case _NotificationType.order:
+        return Icons.shopping_bag_outlined;
+      case _NotificationType.offer:
+        return Icons.local_offer_outlined;
+      case _NotificationType.message:
+        return Icons.chat_bubble_outline_rounded;
+      case _NotificationType.system:
+      default:
+        return Icons.info_outline_rounded;
+    }
+  }
+
+  Color get _iconColor {
+    switch (item.type) {
+      case _NotificationType.order:
+        return AppColors.teal;
+      case _NotificationType.offer:
+        return AppColors.orange;
+      case _NotificationType.message:
+        return AppColors.purple;
+      case _NotificationType.system:
+      default:
+        return AppColors.navy;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final h = Responsive.height(context);
+    final w = Responsive.width(context);
     final theme = Theme.of(context);
-    final size = MediaQuery.sizeOf(context);
-    final width = size.width;
-    final height = size.height;
-
-    final radius = height * 0.018;
+    final cs = theme.colorScheme;
 
     return Container(
-      width: double.infinity,
-      margin: EdgeInsets.only(bottom: height * 0.012),
+      padding: EdgeInsets.symmetric(horizontal: w * 0.03, vertical: h * 0.012),
       decoration: BoxDecoration(
         color: theme.cardColor,
-        borderRadius: BorderRadius.circular(radius),
+        borderRadius: BorderRadius.circular(h * 0.02),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(
-              theme.brightness == Brightness.light ? 0.04 : 0.20,
+              theme.brightness == Brightness.light ? 0.04 : 0.18,
             ),
-            blurRadius: height * 0.018,
-            offset: Offset(0, height * 0.008),
+            blurRadius: h * 0.016,
+            offset: Offset(0, h * 0.006),
           ),
         ],
+        border: item.isNew
+            ? Border.all(color: cs.primary.withOpacity(0.55), width: 1)
+            : null,
       ),
-      child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: width * 0.040,
-          vertical: height * 0.014,
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Circle indicator
-            Container(
-              width: height * 0.028,
-              height: height * 0.028,
-              decoration: BoxDecoration(
-                color: item.isUnread
-                    ? AppColors.teal.withOpacity(.12)
-                    : Colors.transparent,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: item.isUnread
-                      ? AppColors.teal
-                      : AppColors.navy.withOpacity(0.18),
-                  width: height * 0.0014,
-                ),
-              ),
-              alignment: Alignment.center,
-              child: Icon(
-                item.isUnread
-                    ? Icons.notifications_active_rounded
-                    : Icons.notifications_outlined,
-                size: height * 0.018,
-                color: item.isUnread
-                    ? AppColors.teal
-                    : AppColors.navy.withOpacity(.7),
-              ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: h * 0.048,
+            height: h * 0.048,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: _iconColor.withOpacity(0.12),
             ),
-            SizedBox(width: width * 0.034),
-            // Text content
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.title,
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      fontWeight: item.isUnread
-                          ? FontWeight.w700
-                          : FontWeight.w500,
-                    ),
-                  ),
-                  SizedBox(height: height * 0.006),
-                  Text(
-                    item.body,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.textTheme.bodyMedium?.color?.withOpacity(
-                        0.8,
+            child: Icon(_icon, size: h * 0.026, color: _iconColor),
+          ),
+          SizedBox(width: w * 0.03),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // العنوان + الوقت
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        item.title,
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                      height: 1.3,
                     ),
-                  ),
-                  SizedBox(height: height * 0.008),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.schedule,
-                        size: height * 0.016,
+                    SizedBox(width: w * 0.02),
+                    Text(
+                      item.timeLabel,
+                      style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.textTheme.bodySmall?.color?.withOpacity(
                           0.7,
                         ),
                       ),
-                      SizedBox(width: width * 0.012),
+                    ),
+                  ],
+                ),
+                SizedBox(height: h * 0.004),
+                Text(
+                  item.body,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.textTheme.bodyMedium?.color?.withOpacity(0.85),
+                    height: 1.4,
+                  ),
+                ),
+                if (item.isNew) ...[
+                  SizedBox(height: h * 0.006),
+                  Row(
+                    children: [
+                      Container(
+                        width: h * 0.008,
+                        height: h * 0.008,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppColors.teal,
+                        ),
+                      ),
+                      SizedBox(width: w * 0.012),
                       Text(
-                        item.timeLabel,
+                        'غير مقروء',
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.textTheme.bodySmall?.color?.withOpacity(
-                            0.7,
-                          ),
+                          color: cs.primary,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
                   ),
                 ],
-              ),
+              ],
             ),
-            if (item.isUnread) ...[
-              SizedBox(width: width * 0.02),
-              Container(
-                width: height * 0.010,
-                height: height * 0.010,
-                decoration: const BoxDecoration(
-                  color: AppColors.orange,
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ],
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 }
 
-/// حالة عدم وجود إشعارات
-class _EmptyState extends StatelessWidget {
-  final double height;
+enum _NotificationType { order, offer, message, system }
 
-  const _EmptyState({required this.height});
+class _NotificationItem {
+  final String id;
+  final String title;
+  final String body;
+  final String timeLabel;
+  final _NotificationType type;
+  final bool isNew;
 
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final size = MediaQuery.sizeOf(context);
-    final width = size.width;
-
-    return SizedBox(
-      height: height * 0.4,
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.notifications_off_outlined,
-              size: height * 0.07,
-              color: AppColors.navy.withOpacity(0.35),
-            ),
-            SizedBox(height: height * 0.018),
-            Text(
-              'ما في إشعارات حالياً',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            SizedBox(height: height * 0.008),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: width * 0.12),
-              child: Text(
-                'أول ما يصير شيء جديد بخصوص طلباتك أو المتاجر اللي تحبها، رح نخبرك هون. 😉',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.textTheme.bodyMedium?.color?.withOpacity(0.75),
-                  height: 1.4,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  _NotificationItem({
+    required this.id,
+    required this.title,
+    required this.body,
+    required this.timeLabel,
+    required this.type,
+    required this.isNew,
+  });
 }
+
+final List<_NotificationItem> _dummyNotifications = [
+  _NotificationItem(
+    id: 'n1',
+    title: 'تم تأكيد طلبك من Pizza House',
+    body: 'طلبك رقم #849 تم تأكيده ورح يوصل خلال 35–45 دقيقة.',
+    timeLabel: 'قبل 5 د',
+    type: _NotificationType.order,
+    isNew: true,
+  ),
+  _NotificationItem(
+    id: 'n2',
+    title: 'عرض جديد من Coffee Mood',
+    body: 'خصم 30٪ على كل المشروبات الباردة اليوم فقط! لا تفوّت العرض.',
+    timeLabel: 'اليوم',
+    type: _NotificationType.offer,
+    isNew: true,
+  ),
+  _NotificationItem(
+    id: 'n3',
+    title: 'رسالة جديدة من Fit Zone Gym',
+    body: 'تم تعديل موعد حصّتك بناءً على طلبك. شوف التفاصيل من الرسائل.',
+    timeLabel: 'أمس',
+    type: _NotificationType.message,
+    isNew: false,
+  ),
+  _NotificationItem(
+    id: 'n4',
+    title: 'مرحباً في Shoofha ✨',
+    body: 'خلّينا نجهز حسابك: كمّل الاهتمامات واستكشف المتاجر حولك.',
+    timeLabel: 'منذ 3 أيام',
+    type: _NotificationType.system,
+    isNew: false,
+  ),
+];

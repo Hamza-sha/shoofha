@@ -18,13 +18,20 @@ class ProductDetailsScreen extends ConsumerStatefulWidget {
 
 class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
   late StoreProduct product;
-
   int _quantity = 1;
 
   @override
   void initState() {
     super.initState();
-    final p = getProductById(widget.productId);
+
+    // نحاول نجيب المنتج من قائمة kStoreProducts
+    StoreProduct? p;
+    try {
+      p = kStoreProducts.firstWhere((prod) => prod.id == widget.productId);
+    } catch (_) {
+      p = null;
+    }
+
     product =
         p ??
         StoreProduct(
@@ -43,135 +50,150 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
     final h = Responsive.height(context);
     final cs = Theme.of(context).colorScheme;
 
-    return Scaffold(
-      appBar: AppBar(title: Text(product.name)),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.symmetric(horizontal: w * 0.05, vertical: h * 0.02),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: w * 0.6,
-                height: w * 0.6,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    colors: [
-                      product.color.withOpacity(0.9),
-                      product.color.withOpacity(0.6),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                ),
-                child: Center(
-                  child: Text(
-                    product.name.characters.first,
-                    style: TextStyle(
-                      fontSize: w * 0.12,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        appBar: AppBar(title: Text(product.name)),
+        body: SingleChildScrollView(
+          padding: EdgeInsets.symmetric(
+            horizontal: w * 0.05,
+            vertical: h * 0.02,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // دائرة تمثّل صورة المنتج (ديزاين بسيط مؤقت)
+              Center(
+                child: Container(
+                  width: w * 0.6,
+                  height: w * 0.6,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [
+                        product.color.withOpacity(0.9),
+                        product.color.withOpacity(0.6),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
                   ),
-                ),
-              ),
-            ),
-            SizedBox(height: h * 0.02),
-
-            Text(
-              product.name,
-              style: TextStyle(fontSize: w * 0.05, fontWeight: FontWeight.w700),
-            ),
-            SizedBox(height: h * 0.008),
-            Text(
-              '${product.price.toStringAsFixed(2)} د.أ',
-              style: TextStyle(
-                fontSize: w * 0.045,
-                fontWeight: FontWeight.w700,
-                color: cs.primary,
-              ),
-            ),
-            SizedBox(height: h * 0.02),
-
-            Text(
-              'تفاصيل المنتج',
-              style: TextStyle(fontSize: w * 0.04, fontWeight: FontWeight.w600),
-            ),
-            SizedBox(height: h * 0.006),
-            Text(
-              product.description,
-              style: TextStyle(fontSize: w * 0.035, height: 1.4),
-            ),
-            SizedBox(height: h * 0.02),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'الكمية',
-                  style: TextStyle(
-                    fontSize: w * 0.04,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                Row(
-                  children: [
-                    IconButton(
-                      onPressed: () {
-                        if (_quantity > 1) {
-                          setState(() {
-                            _quantity--;
-                          });
-                        }
-                      },
-                      icon: const Icon(Icons.remove_circle_outline),
-                    ),
-                    Text(
-                      '$_quantity',
+                  child: Center(
+                    child: Text(
+                      product.name.isNotEmpty
+                          ? product.name.characters.first
+                          : '?',
                       style: TextStyle(
-                        fontSize: w * 0.045,
-                        fontWeight: FontWeight.w600,
+                        fontSize: w * 0.12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
                       ),
                     ),
-                    IconButton(
-                      onPressed: () {
-                        setState(() {
-                          _quantity++;
-                        });
-                      },
-                      icon: const Icon(Icons.add_circle_outline),
-                    ),
-                  ],
+                  ),
                 ),
-              ],
-            ),
-            SizedBox(height: h * 0.02),
-
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: () async {
-                  final ok = await requireLogin(context);
-                  if (!ok) return;
-
-                  // أضف المنتج للسلة عبر CartController باستخدام Riverpod
-                  ref
-                      .read(cartControllerProvider.notifier)
-                      .addItem(product, quantity: _quantity);
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'تم إضافة $_quantity × ${product.name} إلى السلة',
-                      ),
-                    ),
-                  );
-                },
-                child: const Text('أضف إلى السلة'),
               ),
-            ),
-          ],
+              SizedBox(height: h * 0.02),
+
+              Text(
+                product.name,
+                style: TextStyle(
+                  fontSize: w * 0.05,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              SizedBox(height: h * 0.008),
+              Text(
+                '${product.price.toStringAsFixed(2)} د.أ',
+                style: TextStyle(
+                  fontSize: w * 0.045,
+                  fontWeight: FontWeight.w700,
+                  color: cs.primary,
+                ),
+              ),
+              SizedBox(height: h * 0.02),
+
+              Text(
+                'تفاصيل المنتج',
+                style: TextStyle(
+                  fontSize: w * 0.04,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              SizedBox(height: h * 0.006),
+              Text(
+                product.description,
+                style: TextStyle(fontSize: w * 0.035, height: 1.4),
+              ),
+              SizedBox(height: h * 0.02),
+
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'الكمية',
+                    style: TextStyle(
+                      fontSize: w * 0.04,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      IconButton(
+                        onPressed: () {
+                          if (_quantity > 1) {
+                            setState(() {
+                              _quantity--;
+                            });
+                          }
+                        },
+                        icon: const Icon(Icons.remove_circle_outline),
+                      ),
+                      Text(
+                        '$_quantity',
+                        style: TextStyle(
+                          fontSize: w * 0.045,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () {
+                          setState(() {
+                            _quantity++;
+                          });
+                        },
+                        icon: const Icon(Icons.add_circle_outline),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              SizedBox(height: h * 0.02),
+
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () async {
+                    final ok = await requireLogin(context);
+                    if (!ok) return;
+
+                    // أضف المنتج للسلة عبر CartController باستخدام Riverpod
+                    ref
+                        .read(cartControllerProvider.notifier)
+                        .addItem(product, quantity: _quantity);
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'تم إضافة $_quantity × ${product.name} إلى السلة',
+                        ),
+                      ),
+                    );
+                  },
+                  child: const Text('أضف إلى السلة'),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

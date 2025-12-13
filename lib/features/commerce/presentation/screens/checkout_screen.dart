@@ -1,14 +1,19 @@
-// lib/features/commerce/presentation/screens/checkout_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:shoofha/core/responsive/responsive.dart';
 import 'package:shoofha/features/cart/application/cart_controller.dart';
 import 'package:shoofha/features/store/domain/store_models.dart';
+import 'package:shoofha/features/commerce/presentation/screens/order_success_screen.dart';
 
 class CheckoutScreen extends ConsumerWidget {
   const CheckoutScreen({super.key});
+
+  String _generateOrderId() {
+    final ms = DateTime.now().millisecondsSinceEpoch;
+    return 'SH-$ms';
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -19,195 +24,206 @@ class CheckoutScreen extends ConsumerWidget {
     final h = Responsive.height(context);
     final cs = Theme.of(context).colorScheme;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('إتمام الطلب'), centerTitle: true),
-      body: cartItems.isEmpty
-          ? Center(
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: w * 0.1),
-                child: Text(
-                  'لا يوجد عناصر في السلة لإتمام الطلب.',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        appBar: AppBar(title: const Text('إتمام الطلب'), centerTitle: true),
+        body: cartItems.isEmpty
+            ? Center(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: w * 0.1),
+                  child: Text(
+                    'لا يوجد عناصر في السلة لإتمام الطلب.',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
-              ),
-            )
-          : SingleChildScrollView(
-              padding: EdgeInsets.symmetric(
-                horizontal: w * 0.06,
-                vertical: h * 0.02,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // عنوان التوصيل
-                  Text(
-                    'عنوان التوصيل',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
+              )
+            : SingleChildScrollView(
+                padding: EdgeInsets.symmetric(
+                  horizontal: w * 0.06,
+                  vertical: h * 0.02,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'عنوان التوصيل',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-                  SizedBox(height: h * 0.008),
-                  Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.all(w * 0.035),
-                    decoration: BoxDecoration(
-                      color: cs.surface,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.04),
-                          blurRadius: 8,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.location_on_outlined,
-                          color: cs.primary,
-                          size: w * 0.07,
-                        ),
-                        SizedBox(width: w * 0.03),
-                        Expanded(
-                          child: Text(
-                            'عمّان، الأردن\nيمكنك لاحقاً ربطه بعنوان المستخدم من البروفايل.',
-                            style: Theme.of(context).textTheme.bodyMedium,
+                    SizedBox(height: h * 0.008),
+                    Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.all(w * 0.035),
+                      decoration: BoxDecoration(
+                        color: cs.surface,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.04),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
                           ),
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            // لاحقاً: افتح شاشة تعديل العنوان
-                          },
-                          child: const Text('تعديل'),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  SizedBox(height: h * 0.025),
-
-                  // ملخص المنتجات
-                  Text(
-                    'المنتجات',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  SizedBox(height: h * 0.008),
-
-                  ListView.separated(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: cartItems.length,
-                    separatorBuilder: (_, __) => SizedBox(height: h * 0.01),
-                    itemBuilder: (context, index) {
-                      final item = cartItems[index];
-                      final product = item.product;
-                      final store = getStoreById(product.storeId);
-
-                      return _CheckoutItemTile(
-                        product: product,
-                        quantity: item.quantity,
-                        storeName: store?.name ?? 'متجر',
-                      );
-                    },
-                  ),
-
-                  SizedBox(height: h * 0.025),
-
-                  // طريقة الدفع
-                  Text(
-                    'طريقة الدفع',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  SizedBox(height: h * 0.008),
-                  Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.all(w * 0.035),
-                    decoration: BoxDecoration(
-                      color: cs.surface,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: cs.primary.withOpacity(0.4)),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.money_rounded,
-                          color: cs.primary,
-                          size: w * 0.07,
-                        ),
-                        SizedBox(width: w * 0.03),
-                        Expanded(
-                          child: Text(
-                            'الدفع عند الاستلام',
-                            style: Theme.of(context).textTheme.bodyMedium,
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.location_on_outlined,
+                            color: cs.primary,
+                            size: w * 0.07,
                           ),
-                        ),
-                        const Icon(Icons.check_circle, color: Colors.green),
-                      ],
-                    ),
-                  ),
-
-                  SizedBox(height: h * 0.14),
-                ],
-              ),
-            ),
-      bottomNavigationBar: cartItems.isEmpty
-          ? null
-          : Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: w * 0.06,
-                vertical: h * 0.02,
-              ),
-              decoration: BoxDecoration(
-                color: cs.surface,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.06),
-                    blurRadius: 8,
-                    offset: const Offset(0, -2),
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _SummaryRow(label: 'المجموع', value: cartState.subTotal),
-                  SizedBox(height: h * 0.006),
-                  _SummaryRow(label: 'التوصيل', value: cartState.deliveryFee),
-                  Divider(height: h * 0.03),
-                  _SummaryRow(
-                    label: 'الإجمالي',
-                    value: cartState.total,
-                    isBold: true,
-                  ),
-                  SizedBox(height: h * 0.015),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: () {
-                        // هنا لاحقاً ممكن:
-                        // - إنشاء Order
-                        // - مسح السلة
-                        // - التنقل لشاشة نجاح الطلب
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('تم إرسال الطلب بنجاح ✅'),
+                          SizedBox(width: w * 0.03),
+                          Expanded(
+                            child: Text(
+                              'عمّان، الأردن\nيمكنك لاحقاً ربطه بعنوان المستخدم من البروفايل.',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
                           ),
+                          TextButton(
+                            onPressed: () {},
+                            child: const Text('تعديل'),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: h * 0.025),
+
+                    Text(
+                      'المنتجات',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    SizedBox(height: h * 0.008),
+
+                    ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: cartItems.length,
+                      separatorBuilder: (_, __) => SizedBox(height: h * 0.01),
+                      itemBuilder: (context, index) {
+                        final item = cartItems[index];
+                        final product = item.product;
+
+                        StoreModel? store;
+                        try {
+                          store = kStores.firstWhere(
+                            (s) => s.id == product.storeId,
+                          );
+                        } catch (_) {
+                          store = null;
+                        }
+
+                        return _CheckoutItemTile(
+                          product: product,
+                          quantity: item.quantity,
+                          storeName: store?.name ?? 'متجر',
                         );
                       },
-                      child: const Text('تأكيد الطلب'),
                     ),
-                  ),
-                ],
+
+                    SizedBox(height: h * 0.025),
+
+                    Text(
+                      'طريقة الدفع',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    SizedBox(height: h * 0.008),
+                    Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.all(w * 0.035),
+                      decoration: BoxDecoration(
+                        color: cs.surface,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: cs.primary.withOpacity(0.4)),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.money_rounded,
+                            color: cs.primary,
+                            size: w * 0.07,
+                          ),
+                          SizedBox(width: w * 0.03),
+                          Expanded(
+                            child: Text(
+                              'الدفع عند الاستلام',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                          ),
+                          const Icon(Icons.check_circle, color: Colors.green),
+                        ],
+                      ),
+                    ),
+
+                    SizedBox(height: h * 0.14),
+                  ],
+                ),
               ),
-            ),
+        bottomNavigationBar: cartItems.isEmpty
+            ? null
+            : Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: w * 0.06,
+                  vertical: h * 0.02,
+                ),
+                decoration: BoxDecoration(
+                  color: cs.surface,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.06),
+                      blurRadius: 8,
+                      offset: const Offset(0, -2),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _SummaryRow(label: 'المجموع', value: cartState.subTotal),
+                    SizedBox(height: h * 0.006),
+                    _SummaryRow(label: 'التوصيل', value: cartState.deliveryFee),
+                    Divider(height: h * 0.03),
+                    _SummaryRow(
+                      label: 'الإجمالي',
+                      value: cartState.total,
+                      isBold: true,
+                    ),
+                    SizedBox(height: h * 0.015),
+
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        onPressed: () {
+                          final orderId = _generateOrderId();
+                          final total = cartState.total;
+
+                          // ✅ امسح السلة
+                          ref.read(cartControllerProvider.notifier).clear();
+
+                          // ✅ روح على نجاح الطلب
+                          context.goNamed(
+                            'order-success',
+                            extra: OrderSuccessArgs(
+                              orderId: orderId,
+                              total: total,
+                            ),
+                          );
+                        },
+                        child: const Text('تأكيد الطلب'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+      ),
     );
   }
 }

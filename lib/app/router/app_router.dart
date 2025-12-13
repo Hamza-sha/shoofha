@@ -10,6 +10,7 @@ import 'package:shoofha/features/auth/presentation/screens/choose_interests_scre
 
 import 'package:shoofha/features/commerce/presentation/screens/my_orders_screen.dart';
 import 'package:shoofha/features/commerce/presentation/screens/checkout_screen.dart';
+import 'package:shoofha/features/commerce/presentation/screens/order_success_screen.dart';
 
 import 'package:shoofha/features/main_shell/presentation/main_shell.dart';
 import 'package:shoofha/features/messaging/presentation/screens/notifications_screen.dart';
@@ -31,7 +32,6 @@ final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(
 final GoRouter appRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
   initialLocation: '/splash',
-
   refreshListenable: authNotifier,
 
   redirect: (context, state) {
@@ -39,7 +39,6 @@ final GoRouter appRouter = GoRouter(
     final hasCompletedInterests = authNotifier.hasCompletedInterests;
     final location = state.matchedLocation;
 
-    // راوتات الأوث العامة (بدون تسجيل دخول)
     const publicRoutes = <String>{
       '/splash',
       '/welcome',
@@ -48,7 +47,6 @@ final GoRouter appRouter = GoRouter(
       '/otp',
     };
 
-    // راوتات فلو الأوث (ما نرجعلها بعد ما يكمّل كل شيء)
     const authFlowRoutes = <String>{
       '/welcome',
       '/login',
@@ -57,25 +55,16 @@ final GoRouter appRouter = GoRouter(
       '/choose-interests',
     };
 
-    // 1️⃣ مش مسجّل دخول
     if (!isLoggedIn) {
-      if (publicRoutes.contains(location)) {
-        return null;
-      }
+      if (publicRoutes.contains(location)) return null;
       return '/welcome';
     }
 
-    // 2️⃣ مسجّل دخول لكن لسه ما كمل الاهتمامات
     if (isLoggedIn && !hasCompletedInterests) {
-      // نسمح له يكون على otp أو choose-interests فقط
-      if (location == '/otp' || location == '/choose-interests') {
-        return null;
-      }
-      // حاول يروح على أي مكان ثاني → رجّعه على otp
+      if (location == '/otp' || location == '/choose-interests') return null;
       return '/otp';
     }
 
-    // 3️⃣ مسجّل ودافع وكل شيء تمام → ما يرجع لشاشات الأوث
     if (isLoggedIn &&
         hasCompletedInterests &&
         authFlowRoutes.contains(location)) {
@@ -117,30 +106,27 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const ChooseInterestsScreen(),
     ),
 
-    // 🏠 الشيل الرئيسي
     GoRoute(
       path: '/app',
       name: 'app',
       builder: (context, state) => const MainShell(),
     ),
 
-    // ⚙️ الإعدادات
     GoRoute(
       path: '/settings',
       name: 'settings',
       builder: (context, state) => const SettingsScreen(),
     ),
 
-    // 🏪 المتجر
     GoRoute(
       path: '/store/:id',
       name: 'store',
       builder: (context, state) {
-        return const StoreProfileScreen();
+        final id = state.pathParameters['id'] ?? 'unknown';
+        return StoreProfileScreen(storeId: id);
       },
     ),
 
-    // 🧾 المنتج
     GoRoute(
       path: '/product/:id',
       name: 'product',
@@ -150,7 +136,6 @@ final GoRouter appRouter = GoRouter(
       },
     ),
 
-    // 💬 الرسائل
     GoRoute(
       path: '/messages',
       name: 'messages',
@@ -165,28 +150,39 @@ final GoRouter appRouter = GoRouter(
       },
     ),
 
-    // 🔔 الإشعارات
     GoRoute(
       path: '/notifications',
       name: 'notifications',
       builder: (context, state) => const NotificationsScreen(),
     ),
 
-    // 📦 الطلبات
     GoRoute(
       path: '/orders',
       name: 'orders',
       builder: (context, state) => const OrdersScreen(),
     ),
 
-    // 🧾 إتمام الطلب (Checkout)
     GoRoute(
       path: '/checkout',
       name: 'checkout',
       builder: (context, state) => const CheckoutScreen(),
     ),
 
-    // ❤️ المفضلة
+    // ✅ نجاح الطلب (لازم extra من نوع OrderSuccessArgs)
+    GoRoute(
+      path: '/order-success',
+      name: 'order-success',
+      builder: (context, state) {
+        final extra = state.extra;
+
+        final args = extra is OrderSuccessArgs
+            ? extra
+            : const OrderSuccessArgs(orderId: 'SH-UNKNOWN', total: 0);
+
+        return OrderSuccessScreen(args: args);
+      },
+    ),
+
     GoRoute(
       path: '/favorites',
       name: 'favorites',

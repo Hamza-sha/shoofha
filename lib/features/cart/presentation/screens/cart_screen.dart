@@ -176,26 +176,35 @@ class _CartHeaderSummary extends StatelessWidget {
       width: double.infinity,
       padding: EdgeInsets.symmetric(
         horizontal: width * 0.04,
-        vertical: height * 0.010,
+        vertical: height * 0.012,
       ),
       decoration: BoxDecoration(
         color: theme.cardColor,
         borderRadius: BorderRadius.circular(height * 0.018),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(
+              theme.brightness == Brightness.light ? 0.04 : 0.22,
+            ),
+            blurRadius: height * 0.018,
+            offset: Offset(0, height * 0.006),
+          ),
+        ],
       ),
       child: Row(
         children: [
-          Icon(Icons.shopping_bag_outlined, size: height * 0.026),
-          SizedBox(width: width * 0.02),
-          Text(
-            'عدد العناصر في السلة: ',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w500,
-            ),
+          Icon(
+            Icons.shopping_bag_outlined,
+            size: height * 0.026,
+            color: theme.iconTheme.color,
           ),
-          Text(
-            '$itemCount',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w700,
+          SizedBox(width: width * 0.02),
+          Expanded(
+            child: Text(
+              'لديك $itemCount عنصر${itemCount == 1 ? '' : ''} في السلة',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -204,7 +213,7 @@ class _CartHeaderSummary extends StatelessWidget {
   }
 }
 
-/// كرت عنصر في السلة
+/// عنصر واحد في السلة
 class _CartItemCard extends ConsumerWidget {
   final CartItem item;
 
@@ -221,8 +230,8 @@ class _CartItemCard extends ConsumerWidget {
 
     final product = item.product;
     final title = product.name;
-    final subtitle = product.description;
-    final priceLabel = '${item.totalPrice.toStringAsFixed(2)} د.أ';
+
+    final controller = ref.read(cartControllerProvider.notifier);
 
     return Container(
       decoration: BoxDecoration(
@@ -231,7 +240,7 @@ class _CartItemCard extends ConsumerWidget {
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(
-              theme.brightness == Brightness.light ? 0.03 : 0.25,
+              theme.brightness == Brightness.light ? 0.03 : 0.20,
             ),
             blurRadius: height * 0.018,
             offset: Offset(0, height * 0.010),
@@ -258,10 +267,12 @@ class _CartItemCard extends ConsumerWidget {
               ),
             ),
             child: Center(
-              child: Icon(
-                Icons.shopping_bag_outlined,
-                color: Colors.white,
-                size: height * 0.035,
+              child: Text(
+                product.name.characters.first,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),
@@ -286,57 +297,71 @@ class _CartItemCard extends ConsumerWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    IconButton(
+                    SizedBox(width: width * 0.02),
+                    _CartIconButton(
+                      icon: Icons.delete_outline_rounded,
                       onPressed: () {
-                        ref
-                            .read(cartControllerProvider.notifier)
-                            .removeItem(product.id);
+                        controller.removeItem(product.id);
                       },
-                      icon: Icon(
-                        Icons.close,
-                        size: height * 0.022,
-                        color: theme.iconTheme.color?.withOpacity(0.7),
-                      ),
                     ),
                   ],
                 ),
+                SizedBox(height: height * 0.006),
 
-                if (subtitle.isNotEmpty) ...[
-                  SizedBox(height: height * 0.004),
-                  Text(
-                    subtitle,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.textTheme.bodySmall?.color?.withOpacity(0.7),
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                // سعر القطعة
+                Text(
+                  '${product.price.toStringAsFixed(2)} د.أ للقطعة',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.textTheme.bodyMedium?.color?.withOpacity(0.8),
                   ),
-                ],
+                ),
+                SizedBox(height: height * 0.010),
 
-                SizedBox(height: height * 0.008),
-
-                // السعر + ستبر الكمية
+                // الكمية + المجموع
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
+                    // التحكم في الكمية
+                    Row(
+                      children: [
+                        _QuantityButton(
+                          icon: Icons.remove_rounded,
+                          onPressed: () {
+                            controller.updateQuantity(
+                              product.id,
+                              item.quantity - 1,
+                            );
+                          },
+                        ),
+                        Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: width * 0.018,
+                          ),
+                          child: Text(
+                            '${item.quantity}',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        _QuantityButton(
+                          icon: Icons.add_rounded,
+                          onPressed: () {
+                            controller.updateQuantity(
+                              product.id,
+                              item.quantity + 1,
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+
+                    // مجموع هذا المنتج
                     Text(
-                      priceLabel,
+                      '${item.totalPrice.toStringAsFixed(2)} د.أ',
                       style: theme.textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
-                    ),
-                    _QuantityStepper(
-                      quantity: item.quantity,
-                      onIncrement: () {
-                        ref
-                            .read(cartControllerProvider.notifier)
-                            .updateQuantity(product.id, item.quantity + 1);
-                      },
-                      onDecrement: () {
-                        ref
-                            .read(cartControllerProvider.notifier)
-                            .updateQuantity(product.id, item.quantity - 1);
-                      },
                     ),
                   ],
                 ),
@@ -349,62 +374,38 @@ class _CartItemCard extends ConsumerWidget {
   }
 }
 
-/// ستِبّر للكمية (+ / -)
-class _QuantityStepper extends StatelessWidget {
-  final int quantity;
-  final VoidCallback onIncrement;
-  final VoidCallback onDecrement;
+class _QuantityButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onPressed;
 
-  const _QuantityStepper({
-    required this.quantity,
-    required this.onIncrement,
-    required this.onDecrement,
-  });
+  const _QuantityButton({required this.icon, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final size = MediaQuery.sizeOf(context);
-    final width = size.width;
     final height = size.height;
 
-    final radius = height * 0.018;
-
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(radius),
-        color: theme.colorScheme.surfaceContainerHighest.withOpacity(
-          theme.brightness == Brightness.light ? 0.9 : 0.2,
+    return InkWell(
+      borderRadius: BorderRadius.circular(height * 0.016),
+      onTap: onPressed,
+      child: Container(
+        padding: EdgeInsets.all(height * 0.004),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(height * 0.016),
+          border: Border.all(color: theme.dividerColor.withOpacity(0.6)),
         ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _StepButton(icon: Icons.remove, onPressed: onDecrement),
-          Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: width * 0.028,
-              vertical: height * 0.004,
-            ),
-            child: Text(
-              '$quantity',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          _StepButton(icon: Icons.add, onPressed: onIncrement),
-        ],
+        child: Icon(icon, size: height * 0.020),
       ),
     );
   }
 }
 
-class _StepButton extends StatelessWidget {
+class _CartIconButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onPressed;
 
-  const _StepButton({required this.icon, required this.onPressed});
+  const _CartIconButton({required this.icon, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
@@ -441,92 +442,84 @@ class _CartBottomSummary extends StatelessWidget {
 
     final vSpaceXs = height * 0.012;
 
-    final subTotal = cartState.subTotal;
-    final delivery = cartState.deliveryFee;
-    final total = cartState.total;
-
     return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(
+        horizontal: width * 0.04,
+        vertical: height * 0.016,
+      ),
       decoration: BoxDecoration(
-        color: theme.scaffoldBackgroundColor,
-        borderRadius: BorderRadius.circular(height * 0.02),
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(height * 0.020),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(
-              theme.brightness == Brightness.light ? 0.03 : 0.35,
+              theme.brightness == Brightness.light ? 0.05 : 0.24,
             ),
             blurRadius: height * 0.020,
-            offset: Offset(0, -height * 0.010),
+            offset: Offset(0, height * 0.010),
           ),
         ],
       ),
-      padding: EdgeInsets.symmetric(
-        horizontal: width * 0.04,
-        vertical: height * 0.014,
-      ),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
         children: [
-          _SummaryRow(label: 'العناصر', value: '$totalItems'),
-          SizedBox(height: vSpaceXs),
+          // ملخص القيم
           _SummaryRow(
-            label: 'المجموع',
-            value: '${subTotal.toStringAsFixed(2)} د.أ',
+            label: 'المجموع (${totalItems} منتج)',
+            value: '${cartState.subTotal.toStringAsFixed(2)} د.أ',
           ),
-          SizedBox(height: vSpaceXs),
+          SizedBox(height: vSpaceXs * 0.7),
           _SummaryRow(
             label: 'رسوم التوصيل',
-            value: delivery == 0
+            value: cartState.deliveryFee == 0
                 ? 'مجاني'
-                : '${delivery.toStringAsFixed(2)} د.أ',
-            valueStyle: theme.textTheme.bodyMedium?.copyWith(
-              color: delivery == 0
-                  ? colorScheme.secondary
-                  : theme.textTheme.bodyMedium?.color,
-              fontWeight: FontWeight.w600,
-            ),
+                : '${cartState.deliveryFee.toStringAsFixed(2)} د.أ',
+            valueStyle: cartState.deliveryFee == 0
+                ? theme.textTheme.bodyMedium?.copyWith(
+                    color: Colors.green,
+                    fontWeight: FontWeight.w600,
+                  )
+                : null,
           ),
           SizedBox(height: vSpaceXs),
-          const Divider(),
-          SizedBox(height: vSpaceXs),
+          Divider(
+            height: vSpaceXs * 2,
+            color: theme.dividerColor.withOpacity(0.4),
+          ),
+          SizedBox(height: vSpaceXs * 0.5),
           _SummaryRow(
             label: 'الإجمالي',
-            value: '${total.toStringAsFixed(2)} د.أ',
+            value: '${cartState.total.toStringAsFixed(2)} د.أ',
             isBold: true,
           ),
-          SizedBox(height: vSpaceXs * 1.5),
+          SizedBox(height: vSpaceXs * 1.4),
 
-          // زر إتمام الشراء (Gradient)
+          // زر إتمام الشراء
           SizedBox(
             width: double.infinity,
-            height: height * 0.060,
+            height: height * 0.058,
             child: DecoratedBox(
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(height * 0.028),
-                gradient:
-                    shoofhaTheme?.primaryButtonGradient ??
-                    const LinearGradient(
-                      colors: [AppColors.navy, AppColors.purple],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
+                borderRadius: BorderRadius.circular(height * 0.016),
+                gradient: shoofhaTheme?.primaryButtonGradient,
               ),
-              child: Material(
-                type: MaterialType.transparency,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(height * 0.028),
-                  onTap: cartState.items.isEmpty
-                      ? null
-                      : () {
-                          context.pushNamed('checkout');
-                        },
-                  child: Center(
-                    child: Text(
-                      'إتمام الشراء',
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
+              child: FilledButton(
+                onPressed: () {
+                  // ننتقل لصفحة إتمام الطلب (Checkout)
+                  context.goNamed('checkout');
+                },
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(height * 0.016),
+                  ),
+                ),
+                child: Text(
+                  'إتمام الشراء',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: colorScheme.onPrimary,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),

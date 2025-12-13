@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:shoofha/core/responsive/responsive.dart';
 import 'package:shoofha/core/auth/guest_guard.dart';
+import 'package:shoofha/core/theme/app_colors.dart';
 
 class MessagesInboxScreen extends StatelessWidget {
   const MessagesInboxScreen({super.key});
@@ -11,59 +12,99 @@ class MessagesInboxScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final w = Responsive.width(context);
     final h = Responsive.height(context);
-    final cs = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
 
-    // محادثات تجريبية
     final conversations = _dummyConversations;
+    final isEmpty = conversations.isEmpty;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('الرسائل')),
-      body: conversations.isEmpty
-          ? Center(
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: w * 0.12),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.chat_bubble_outline,
-                      size: w * 0.20,
-                      color: cs.onSurface.withOpacity(0.35),
-                    ),
-                    SizedBox(height: h * 0.015),
-                    Text(
-                      'ما في أي محادثات لسه 💬',
-                      style: TextStyle(
-                        fontSize: w * 0.045,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    SizedBox(height: h * 0.008),
-                    Text(
-                      'تقدر تبدأ محادثة من صفحة المتجر أو من تفاصيل العرض.',
-                      style: TextStyle(
-                        fontSize: w * 0.035,
-                        color: cs.onSurface.withOpacity(0.7),
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        appBar: AppBar(title: const Text('الرسائل'), centerTitle: true),
+        body: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: w * 0.06,
+            vertical: h * 0.015,
+          ),
+          child: isEmpty
+              ? _EmptyInbox()
+              : ListView.separated(
+                  itemCount: conversations.length,
+                  separatorBuilder: (_, __) => SizedBox(height: h * 0.014),
+                  itemBuilder: (context, index) {
+                    final conv = conversations[index];
+                    return _ConversationTile(conversation: conv);
+                  },
+                ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyInbox extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final h = Responsive.height(context);
+    final w = Responsive.width(context);
+    final theme = Theme.of(context);
+
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: w * 0.12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: h * 0.18,
+              height: h * 0.18,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [AppColors.teal, AppColors.purple],
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
                 ),
               ),
-            )
-          : ListView.separated(
-              padding: EdgeInsets.symmetric(
-                horizontal: w * 0.04,
-                vertical: h * 0.012,
+              child: Icon(
+                Icons.chat_bubble_outline_rounded,
+                color: Colors.white,
+                size: h * 0.08,
               ),
-              itemCount: conversations.length,
-              separatorBuilder: (_, __) => SizedBox(height: h * 0.010),
-              itemBuilder: (context, index) {
-                final c = conversations[index];
-                return _ConversationTile(conversation: c);
-              },
             ),
+            SizedBox(height: h * 0.02),
+            Text(
+              'ما عندك رسائل حالياً',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: h * 0.008),
+            Text(
+              'تابع المتاجر وتفاعل مع العروض عشان تبلّش المحادثات بينك وبينهم.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+                height: 1.5,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: h * 0.025),
+            SizedBox(
+              width: w * 0.6,
+              height: h * 0.055,
+              child: FilledButton(
+                onPressed: () {
+                  // نرجع على الهوم / الاكسبلور
+                  context.go('/app');
+                },
+                child: const Text('استكشف العروض'),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -75,74 +116,126 @@ class _ConversationTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final w = Responsive.width(context);
     final h = Responsive.height(context);
-    final cs = Theme.of(context).colorScheme;
+    final w = Responsive.width(context);
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
 
-    return ListTile(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      tileColor: cs.surface,
-      leading: CircleAvatar(
-        radius: w * 0.06,
-        backgroundColor: conversation.color.withOpacity(0.12),
-        child: Text(
-          conversation.name.characters.first,
-          style: TextStyle(
-            fontWeight: FontWeight.w700,
-            fontSize: w * 0.055,
-            color: conversation.color,
-          ),
-        ),
-      ),
-      title: Text(
-        conversation.name,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(fontSize: w * 0.040, fontWeight: FontWeight.w600),
-      ),
-      subtitle: Text(
-        conversation.lastMessage,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          fontSize: w * 0.033,
-          color: cs.onSurface.withOpacity(0.7),
-        ),
-      ),
-      trailing: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            conversation.timeLabel,
-            style: TextStyle(
-              fontSize: w * 0.030,
-              color: cs.onSurface.withOpacity(0.6),
-            ),
-          ),
-          if (conversation.unreadCount > 0) ...[
-            SizedBox(height: h * 0.004),
-            Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: w * 0.018,
-                vertical: h * 0.002,
-              ),
-              decoration: BoxDecoration(
-                color: cs.primary,
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text(
-                conversation.unreadCount.toString(),
-                style: TextStyle(fontSize: w * 0.030, color: Colors.white),
-              ),
-            ),
-          ],
-        ],
-      ),
+    final hasUnread = conversation.unreadCount > 0;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(h * 0.02),
       onTap: () async {
-        final ok = await requireLogin(context);
-        if (!ok) return;
+        final allowed = await requireLogin(context);
+        if (!allowed) return;
+
         context.pushNamed('chat', pathParameters: {'id': conversation.id});
       },
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: w * 0.03,
+          vertical: h * 0.012,
+        ),
+        decoration: BoxDecoration(
+          color: theme.cardColor,
+          borderRadius: BorderRadius.circular(h * 0.02),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(
+                theme.brightness == Brightness.light ? 0.04 : 0.16,
+              ),
+              blurRadius: h * 0.018,
+              offset: Offset(0, h * 0.008),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            // أفاتار المتجر
+            Container(
+              width: h * 0.06,
+              height: h * 0.06,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: conversation.color.withOpacity(0.18),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                conversation.name.characters.first,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: conversation.color,
+                ),
+              ),
+            ),
+            SizedBox(width: w * 0.03),
+            // النصوص
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // السطر الأول: الاسم + الوقت
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          conversation.name,
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      SizedBox(width: w * 0.02),
+                      Text(
+                        conversation.timeLabel,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.textTheme.bodySmall?.color?.withOpacity(
+                            0.7,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: h * 0.004),
+                  // آخر رسالة
+                  Text(
+                    conversation.lastMessage,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.textTheme.bodyMedium?.color?.withOpacity(
+                        0.8,
+                      ),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(width: w * 0.02),
+            // عدد الرسائل الغير مقروءة
+            if (hasUnread)
+              Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: w * 0.020,
+                  vertical: h * 0.004,
+                ),
+                decoration: BoxDecoration(
+                  color: cs.primary,
+                  borderRadius: BorderRadius.circular(h * 0.016),
+                ),
+                child: Text(
+                  conversation.unreadCount.toString(),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -165,6 +258,7 @@ class _Conversation {
   });
 }
 
+/// محادثات تجريبية
 final List<_Conversation> _dummyConversations = [
   _Conversation(
     id: 'coffee-mood',
@@ -175,10 +269,26 @@ final List<_Conversation> _dummyConversations = [
     color: const Color(0xFF6A1B9A),
   ),
   _Conversation(
+    id: 'fit-zone',
+    name: 'Fit Zone Gym',
+    lastMessage: 'موعد حصتك اليوم الساعة 7 مساءً.',
+    timeLabel: 'اليوم',
+    unreadCount: 0,
+    color: const Color(0xFF1B5E20),
+  ),
+  _Conversation(
+    id: 'pizza-house',
+    name: 'Pizza House',
+    lastMessage: 'تم تأكيد طلبك ورح يوصل خلال 35 دقيقة.',
+    timeLabel: 'أمس',
+    unreadCount: 1,
+    color: const Color(0xFFD32F2F),
+  ),
+  _Conversation(
     id: 'tech-corner',
     name: 'Tech Corner',
     lastMessage: 'الباور بانك عليه ضمان سنة كاملة.',
-    timeLabel: 'أمس',
+    timeLabel: 'منذ 3 أيام',
     unreadCount: 0,
     color: const Color(0xFF0D47A1),
   ),
