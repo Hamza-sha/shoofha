@@ -7,16 +7,46 @@ import 'package:shoofha/features/cart/application/cart_controller.dart';
 import 'package:shoofha/features/store/domain/store_models.dart';
 import 'package:shoofha/features/commerce/presentation/screens/order_success_screen.dart';
 
-class CheckoutScreen extends ConsumerWidget {
+class CheckoutScreen extends ConsumerStatefulWidget {
   const CheckoutScreen({super.key});
+
+  @override
+  ConsumerState<CheckoutScreen> createState() => _CheckoutScreenState();
+}
+
+class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
+  bool _submitting = false;
 
   String _generateOrderId() {
     final ms = DateTime.now().millisecondsSinceEpoch;
     return 'SH-$ms';
   }
 
+  void _placeOrder(BuildContext context) {
+    if (_submitting) return;
+
+    final cartState = ref.read(cartControllerProvider);
+    if (cartState.items.isEmpty) return;
+
+    setState(() => _submitting = true);
+
+    final orderId = _generateOrderId();
+    final total = cartState.total;
+
+    // ✅ امسح السلة
+    ref.read(cartControllerProvider.notifier).clear();
+
+    // ✅ روح على نجاح الطلب
+    context.goNamed(
+      'order-success',
+      extra: OrderSuccessArgs(orderId: orderId, total: total),
+    );
+
+    // ملاحظة: ما في داعي نرجّع _submitting=false لأننا غادرنا الصفحة.
+  }
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final cartState = ref.watch(cartControllerProvider);
     final cartItems = cartState.items;
 
@@ -86,7 +116,9 @@ class CheckoutScreen extends ConsumerWidget {
                             ),
                           ),
                           TextButton(
-                            onPressed: () {},
+                            onPressed: () {
+                              // TODO: لاحقاً شاشة إدارة العناوين
+                            },
                             child: const Text('تعديل'),
                           ),
                         ],
@@ -164,63 +196,79 @@ class CheckoutScreen extends ConsumerWidget {
                       ),
                     ),
 
-                    SizedBox(height: h * 0.14),
+                    // مساحة حتى ما ينضغط المحتوى تحت البوتوم بار
+                    SizedBox(height: h * 0.02),
                   ],
                 ),
               ),
         bottomNavigationBar: cartItems.isEmpty
             ? null
-            : Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: w * 0.06,
-                  vertical: h * 0.02,
-                ),
-                decoration: BoxDecoration(
-                  color: cs.surface,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.06),
-                      blurRadius: 8,
-                      offset: const Offset(0, -2),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _SummaryRow(label: 'المجموع', value: cartState.subTotal),
-                    SizedBox(height: h * 0.006),
-                    _SummaryRow(label: 'التوصيل', value: cartState.deliveryFee),
-                    Divider(height: h * 0.03),
-                    _SummaryRow(
-                      label: 'الإجمالي',
-                      value: cartState.total,
-                      isBold: true,
-                    ),
-                    SizedBox(height: h * 0.015),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton(
-                        onPressed: () {
-                          final orderId = _generateOrderId();
-                          final total = cartState.total;
-
-                          // ✅ امسح السلة
-                          ref.read(cartControllerProvider.notifier).clear();
-
-                          // ✅ روح على نجاح الطلب
-                          context.goNamed(
-                            'order-success',
-                            extra: OrderSuccessArgs(
-                              orderId: orderId,
-                              total: total,
-                            ),
-                          );
-                        },
-                        child: const Text('تأكيد الطلب'),
+            : SafeArea(
+                top: false,
+                child: Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: w * 0.06,
+                    vertical: h * 0.02,
+                  ),
+                  decoration: BoxDecoration(
+                    color: cs.surface,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.06),
+                        blurRadius: 8,
+                        offset: const Offset(0, -2),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _SummaryRow(label: 'المجموع', value: cartState.subTotal),
+                      SizedBox(height: h * 0.006),
+                      _SummaryRow(
+                        label: 'التوصيل',
+                        value: cartState.deliveryFee,
+                      ),
+                      Divider(height: h * 0.03),
+                      _SummaryRow(
+                        label: 'الإجمالي',
+                        value: cartState.total,
+                        isBold: true,
+                      ),
+                      SizedBox(height: h * 0.015),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton(
+                          onPressed: _submitting
+                              ? null
+                              : () => _placeOrder(context),
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 180),
+                            child: _submitting
+                                ? Row(
+                                    key: const ValueKey('loading'),
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      SizedBox(
+                                        width: h * 0.022,
+                                        height: h * 0.022,
+                                        child: const CircularProgressIndicator(
+                                          strokeWidth: 2.2,
+                                        ),
+                                      ),
+                                      SizedBox(width: w * 0.02),
+                                      const Text('جاري تأكيد الطلب...'),
+                                    ],
+                                  )
+                                : const Text(
+                                    'تأكيد الطلب',
+                                    key: ValueKey('cta'),
+                                  ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
       ),

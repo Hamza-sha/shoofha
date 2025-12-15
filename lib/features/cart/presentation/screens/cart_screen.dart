@@ -465,7 +465,7 @@ class _CartBottomSummary extends StatelessWidget {
         children: [
           // ملخص القيم
           _SummaryRow(
-            label: 'المجموع (${totalItems} منتج)',
+            label: 'المجموع ($totalItems منتج)',
             value: '${cartState.subTotal.toStringAsFixed(2)} د.أ',
           ),
           SizedBox(height: vSpaceXs * 0.7),
