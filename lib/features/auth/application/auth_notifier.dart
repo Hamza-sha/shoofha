@@ -1,39 +1,63 @@
-import 'dart:convert';
+// ignore_for_file: deprecated_member_use
 
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// موديل بسيط للمستخدم (مؤقت لحد ما تربطه مع API حقيقي)
+const _kUserJson = 'shoofha_user_json';
+const _kCompletedInterests = 'shoofha_completed_interests';
+
 class AuthUser {
   final String id;
   final String name;
   final String email;
 
-  const AuthUser({required this.id, required this.name, required this.email});
+  // ✅ NEW
+  final bool isGuest;
 
-  Map<String, dynamic> toMap() => {'id': id, 'name': name, 'email': email};
+  const AuthUser({
+    required this.id,
+    required this.name,
+    required this.email,
+    this.isGuest = false,
+  });
+
+  factory AuthUser.guest() {
+    return AuthUser(
+      id: 'guest',
+      name: 'Guest',
+      email: 'guest@shoofha.local',
+      isGuest: true,
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+    'id': id,
+    'name': name,
+    'email': email,
+    'isGuest': isGuest,
+  };
 
   factory AuthUser.fromMap(Map<String, dynamic> map) => AuthUser(
-    id: (map['id'] ?? '') as String,
-    name: (map['name'] ?? '') as String,
-    email: (map['email'] ?? '') as String,
+    id: (map['id'] ?? '').toString(),
+    name: (map['name'] ?? '').toString(),
+    email: (map['email'] ?? '').toString(),
+    isGuest: (map['isGuest'] ?? false) == true,
   );
 }
 
-/// Notifier مركزي لحالة اليوزر + فلو الاهتمامات + حفظ الحالة (Persist)
 class AuthNotifier extends ChangeNotifier {
-  static const _kUserJson = 'shoofha_auth_user_json';
-  static const _kCompletedInterests = 'shoofha_completed_interests';
-
   AuthUser? _user;
   bool _hasCompletedInterests = false;
 
-  // -------- Getters --------
   AuthUser? get user => _user;
   bool get isLoggedIn => _user != null;
+
+  // ✅ NEW
+  bool get isGuest => _user?.isGuest == true;
+
   bool get hasCompletedInterests => _hasCompletedInterests;
 
-  /// ✅ استرجاع الحالة عند تشغيل التطبيق
   Future<void> restore() async {
     final prefs = await SharedPreferences.getInstance();
 
@@ -48,7 +72,6 @@ class AuthNotifier extends ChangeNotifier {
     }
 
     _hasCompletedInterests = prefs.getBool(_kCompletedInterests) ?? false;
-
     notifyListeners();
   }
 
@@ -64,73 +87,73 @@ class AuthNotifier extends ChangeNotifier {
     await prefs.setBool(_kCompletedInterests, _hasCompletedInterests);
   }
 
-  // -------- LOGIN (مستخدم عنده حساب) --------
   Future<void> signIn({required String email, required String password}) async {
-    // TODO: استبدل هذا ب API حقيقي لاحقاً
     await Future<void>.delayed(const Duration(milliseconds: 500));
 
     _user = AuthUser(
       id: 'user-login-${DateTime.now().millisecondsSinceEpoch}',
       name: email.contains('@') ? email.split('@').first : 'Shoofha User',
       email: email.isNotEmpty ? email : 'user@shoofha.local',
+      isGuest: false,
     );
 
-    // مستخدم قديم → نفترض مكمّل اهتمامات
     _hasCompletedInterests = true;
 
     await _persist();
     notifyListeners();
   }
 
-  // -------- SIGNUP (مستخدم جديد) --------
   Future<void> signUp({
     required String name,
     required String email,
     required String phone,
     required String password,
   }) async {
-    // TODO: API create user
     await Future<void>.delayed(const Duration(milliseconds: 700));
 
     _user = AuthUser(
       id: 'user-signup-${DateTime.now().millisecondsSinceEpoch}',
       name: name.isNotEmpty ? name : 'Shoofha User',
-      // لو ما في إيميل نخترع واحد محلي عشان باقي الشاشات ما تنكسر
       email: email.isNotEmpty ? email : '$phone@shoofha.local',
+      isGuest: false,
     );
 
-    // مستخدم جديد → مسجّل دخول لكن لسه ما كمل اهتمامات + رايح OTP
     _hasCompletedInterests = false;
 
     await _persist();
     notifyListeners();
   }
 
-  // -------- بعد ما ينجح OTP --------
   void verifyOtpSuccess() {
     if (_user == null) return;
-
-    // مسجّل دخول + لسه ما كمل اهتمامات
     _hasCompletedInterests = false;
     notifyListeners();
-    _persist(); // fire & forget
+    _persist();
   }
 
-  // -------- بعد اختيار الاهتمامات --------
   void completeInterests() {
     _hasCompletedInterests = true;
     notifyListeners();
-    _persist(); // fire & forget
+    _persist();
   }
 
-  // -------- LOGOUT --------
-  void logOut() {
+  // ✅ NEW: Continue as Guest
+  Future<void> continueAsGuest() async {
+    _user = AuthUser.guest();
+
+    // Guest ما بدنا نعلّقه بالـ OTP/Interests
+    _hasCompletedInterests = true;
+
+    await _persist();
+    notifyListeners();
+  }
+
+  Future<void> logOut() async {
     _user = null;
     _hasCompletedInterests = false;
+    await _persist();
     notifyListeners();
-    _persist(); // fire & forget
   }
 }
 
-/// Singleton global يستخدمه الراوتر والشاشات
-final AuthNotifier authNotifier = AuthNotifier();
+final authNotifier = AuthNotifier();

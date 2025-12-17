@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:shoofha/features/auth/application/auth_notifier.dart';
-import '../widgets/auth_header.dart';
-import '../widgets/auth_primary_button.dart';
-import '../widgets/auth_text_field.dart';
+import 'package:shoofha/features/auth/presentation/widgets/auth_header.dart';
+import 'package:shoofha/features/auth/presentation/widgets/auth_primary_button.dart';
+import 'package:shoofha/features/auth/presentation/widgets/auth_text_field.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -29,6 +29,14 @@ class _SignupScreenState extends State<SignupScreen> {
   final _passwordController = TextEditingController();
   final _confirmController = TextEditingController();
 
+  // ✅ NEW: errors
+  String? _nameError;
+  String? _emailError;
+  String? _phoneError;
+  String? _passwordError;
+  String? _confirmError;
+  String? _termsError;
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -39,18 +47,104 @@ class _SignupScreenState extends State<SignupScreen> {
     super.dispose();
   }
 
+  bool _isValidEmail(String v) {
+    final value = v.trim();
+    if (value.isEmpty) return false;
+    final at = value.indexOf('@');
+    if (at <= 0) return false;
+    final dot = value.lastIndexOf('.');
+    if (dot <= at + 1) return false;
+    if (dot == value.length - 1) return false;
+    return true;
+  }
+
+  bool _isValidPhone(String v) {
+    final value = v.trim();
+    if (value.isEmpty) return false;
+    final digits = value.replaceAll(RegExp(r'[^0-9]'), '');
+    return digits.length >= 8;
+  }
+
+  bool _validate() {
+    final name = _nameController.text.trim();
+    final email = _emailController.text.trim();
+    final phone = _phoneController.text.trim();
+    final pass = _passwordController.text.trim();
+    final confirm = _confirmController.text.trim();
+
+    String? nameErr;
+    String? emailErr;
+    String? phoneErr;
+    String? passErr;
+    String? confirmErr;
+    String? termsErr;
+
+    if (name.isEmpty || name.length < 2) {
+      nameErr = 'الاسم لازم يكون حرفين على الأقل';
+    }
+
+    if (_useEmail) {
+      if (!_isValidEmail(email)) {
+        emailErr = 'Email غير صحيح';
+      }
+      // phone optional هنا، بس لو المستخدم كتبه نفحصه
+      if (phone.isNotEmpty && !_isValidPhone(phone)) {
+        phoneErr = 'رقم الهاتف غير صحيح';
+      }
+    } else {
+      if (!_isValidPhone(phone)) {
+        phoneErr = 'رقم الهاتف غير صحيح';
+      }
+    }
+
+    if (pass.isEmpty) {
+      passErr = 'Password مطلوب';
+    } else if (pass.length < 6) {
+      passErr = 'Password لازم يكون 6 خانات أو أكثر';
+    }
+
+    if (confirm.isEmpty) {
+      confirmErr = 'Confirm Password مطلوب';
+    } else if (confirm != pass) {
+      confirmErr = 'كلمات السر غير متطابقة';
+    }
+
+    if (!_agreeTerms) {
+      termsErr = 'لازم توافق على الشروط والأحكام';
+    }
+
+    setState(() {
+      _nameError = nameErr;
+      _emailError = emailErr;
+      _phoneError = phoneErr;
+      _passwordError = passErr;
+      _confirmError = confirmErr;
+      _termsError = termsErr;
+    });
+
+    return nameErr == null &&
+        emailErr == null &&
+        phoneErr == null &&
+        passErr == null &&
+        confirmErr == null &&
+        termsErr == null;
+  }
+
   Future<void> _onSignup() async {
     if (_loading) return;
 
-    if (!_agreeTerms) {
-      // TODO: اعرض SnackBar محترمة مثلاً
-      debugPrint('You must agree to terms & conditions');
-      return;
-    }
-
-    if (_passwordController.text.trim() != _confirmController.text.trim()) {
-      // TODO: اعرض رسالة "كلمات السر غير متطابقة"
-      debugPrint('Passwords do not match');
+    if (!_validate()) {
+      if (!mounted) return;
+      if (_termsError != null) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(_termsError!),
+            duration: const Duration(milliseconds: 1400),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
       return;
     }
 
@@ -72,6 +166,16 @@ class _SignupScreenState extends State<SignupScreen> {
       }
     } catch (e) {
       debugPrint('Signup error: $e');
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('تعذر إنشاء الحساب. حاول مرة ثانية.'),
+          duration: const Duration(milliseconds: 1400),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     } finally {
       if (mounted) {
         setState(() => _loading = false);
@@ -102,7 +206,7 @@ class _SignupScreenState extends State<SignupScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            const AuthHeader(),
+            const AuthHeader(showBack: true),
             Expanded(
               child: SingleChildScrollView(
                 padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
@@ -110,8 +214,6 @@ class _SignupScreenState extends State<SignupScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     SizedBox(height: height * 0.01),
-
-                    // عنوان الشاشة
                     Text(
                       'Sign up',
                       style: theme.textTheme.headlineSmall?.copyWith(
@@ -147,7 +249,11 @@ class _SignupScreenState extends State<SignupScreen> {
                             child: GestureDetector(
                               onTap: () {
                                 if (!_useEmail) {
-                                  setState(() => _useEmail = true);
+                                  setState(() {
+                                    _useEmail = true;
+                                    _emailError = null;
+                                    _phoneError = null;
+                                  });
                                 }
                               },
                               child: _SignupTab(
@@ -161,7 +267,11 @@ class _SignupScreenState extends State<SignupScreen> {
                             child: GestureDetector(
                               onTap: () {
                                 if (_useEmail) {
-                                  setState(() => _useEmail = false);
+                                  setState(() {
+                                    _useEmail = false;
+                                    _emailError = null;
+                                    _phoneError = null;
+                                  });
                                 }
                               },
                               child: _SignupTab(
@@ -177,16 +287,20 @@ class _SignupScreenState extends State<SignupScreen> {
 
                     SizedBox(height: vSpaceLg),
 
-                    // الاسم
+                    // Name
                     AuthTextField(
                       label: 'Name',
                       hint: 'Enter your name',
                       prefixIcon: Icons.person_outline,
                       controller: _nameController,
+                      errorText: _nameError,
+                      onChanged: (_) {
+                        if (_nameError != null)
+                          setState(() => _nameError = null);
+                      },
                     ),
                     SizedBox(height: vSpaceMd),
 
-                    // Email / Phone حسب الاختيار
                     if (_useEmail) ...[
                       AuthTextField(
                         label: 'Email ID',
@@ -194,6 +308,11 @@ class _SignupScreenState extends State<SignupScreen> {
                         prefixIcon: Icons.mail_outline,
                         keyboardType: TextInputType.emailAddress,
                         controller: _emailController,
+                        errorText: _emailError,
+                        onChanged: (_) {
+                          if (_emailError != null)
+                            setState(() => _emailError = null);
+                        },
                       ),
                       SizedBox(height: vSpaceMd),
                       AuthTextField(
@@ -202,6 +321,11 @@ class _SignupScreenState extends State<SignupScreen> {
                         prefixIcon: Icons.phone_outlined,
                         keyboardType: TextInputType.phone,
                         controller: _phoneController,
+                        errorText: _phoneError,
+                        onChanged: (_) {
+                          if (_phoneError != null)
+                            setState(() => _phoneError = null);
+                        },
                       ),
                     ] else ...[
                       AuthTextField(
@@ -210,38 +334,53 @@ class _SignupScreenState extends State<SignupScreen> {
                         prefixIcon: Icons.phone_outlined,
                         keyboardType: TextInputType.phone,
                         controller: _phoneController,
+                        errorText: _phoneError,
+                        onChanged: (_) {
+                          if (_phoneError != null)
+                            setState(() => _phoneError = null);
+                        },
                       ),
                     ],
 
                     SizedBox(height: vSpaceMd),
 
-                    // كلمة المرور
+                    // Password
                     AuthTextField(
                       label: 'Password',
                       hint: 'Create a password',
                       prefixIcon: Icons.lock_outline,
                       controller: _passwordController,
                       obscure: _obscurePassword,
+                      errorText: _passwordError,
+                      onChanged: (_) {
+                        if (_passwordError != null) {
+                          setState(() => _passwordError = null);
+                        }
+                      },
                       onToggleObscure: () {
-                        setState(() {
-                          _obscurePassword = !_obscurePassword;
-                        });
+                        setState(() => _obscurePassword = !_obscurePassword);
                       },
                     ),
                     SizedBox(height: vSpaceMd),
 
-                    // تأكيد كلمة المرور
+                    // Confirm
                     AuthTextField(
                       label: 'Confirm Password',
                       hint: 'Re-enter your password',
                       prefixIcon: Icons.lock_outline,
                       controller: _confirmController,
                       obscure: _obscureConfirm,
-                      onToggleObscure: () {
-                        setState(() {
-                          _obscureConfirm = !_obscureConfirm;
-                        });
+                      errorText: _confirmError,
+                      onChanged: (_) {
+                        if (_confirmError != null) {
+                          setState(() => _confirmError = null);
+                        }
                       },
+                      onToggleObscure: () {
+                        setState(() => _obscureConfirm = !_obscureConfirm);
+                      },
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) => _onSignup(),
                     ),
 
                     SizedBox(height: vSpaceSm),
@@ -254,8 +393,10 @@ class _SignupScreenState extends State<SignupScreen> {
                           width: width * 0.1,
                           child: Checkbox(
                             value: _agreeTerms,
-                            onChanged: (v) =>
-                                setState(() => _agreeTerms = v ?? false),
+                            onChanged: (v) => setState(() {
+                              _agreeTerms = v ?? false;
+                              _termsError = null;
+                            }),
                           ),
                         ),
                         Expanded(
@@ -269,7 +410,20 @@ class _SignupScreenState extends State<SignupScreen> {
                         ),
                       ],
                     ),
+
+                    if (_termsError != null) ...[
+                      SizedBox(height: vSpaceXs),
+                      Text(
+                        _termsError!,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colorScheme.error,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+
                     SizedBox(height: vSpaceXs),
+
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -295,7 +449,6 @@ class _SignupScreenState extends State<SignupScreen> {
 
                     SizedBox(height: vSpaceMd),
 
-                    // أزرار Confirm / Cancel
                     Row(
                       children: [
                         Expanded(
@@ -307,46 +460,11 @@ class _SignupScreenState extends State<SignupScreen> {
                                   ),
                                 )
                               : AuthPrimaryButton(
-                                  label: 'Confirm',
+                                  label: 'Create account',
                                   onPressed: _onSignup,
                                 ),
                         ),
-                        SizedBox(width: width * 0.04),
-                        Expanded(
-                          child: SizedBox(
-                            height: height * 0.065,
-                            child: OutlinedButton(
-                              onPressed: () => context.pop(),
-                              child: const Text('Cancel'),
-                            ),
-                          ),
-                        ),
                       ],
-                    ),
-
-                    SizedBox(height: vSpaceLg),
-
-                    // عندك حساب؟
-                    Center(
-                      child: Wrap(
-                        alignment: WrapAlignment.center,
-                        children: [
-                          Text(
-                            'Already have an account ? ',
-                            style: theme.textTheme.bodyMedium,
-                          ),
-                          GestureDetector(
-                            onTap: () => context.go('/login'),
-                            child: Text(
-                              'Login',
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: colorScheme.secondary,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
                     ),
 
                     SizedBox(height: height * 0.03),
@@ -361,7 +479,6 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 }
 
-/// تبويبة Email / Phone في الأعلى
 class _SignupTab extends StatelessWidget {
   final String label;
   final bool isSelected;
@@ -376,29 +493,26 @@ class _SignupTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final size = MediaQuery.of(context).size;
+    final cs = theme.colorScheme;
+    final size = MediaQuery.sizeOf(context);
     final height = size.height;
 
-    final bgColor = isSelected ? colorScheme.primary : Colors.transparent;
-    final textColor = isSelected
-        ? colorScheme.onPrimary
-        : theme.textTheme.bodyMedium?.color;
-
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      curve: Curves.easeOut,
-      alignment: Alignment.center,
+      duration: const Duration(milliseconds: 180),
       padding: EdgeInsets.symmetric(vertical: height * 0.012),
       decoration: BoxDecoration(
-        color: bgColor,
+        color: isSelected ? cs.primary : Colors.transparent,
         borderRadius: BorderRadius.circular(radius),
       ),
-      child: Text(
-        label,
-        style: theme.textTheme.bodyMedium?.copyWith(
-          color: textColor,
-          fontWeight: FontWeight.w600,
+      child: Center(
+        child: Text(
+          label,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: isSelected
+                ? cs.onPrimary
+                : theme.textTheme.bodyMedium?.color,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ),
     );

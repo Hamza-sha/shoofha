@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:shoofha/app/theme/app_theme.dart';
+import 'package:shoofha/features/auth/application/auth_notifier.dart';
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
@@ -58,7 +59,6 @@ class WelcomeScreen extends StatelessWidget {
                     height: topHeight - height * 0.05,
                     child: Column(
                       children: [
-                        // لوجو Shoofha
                         SizedBox(
                           height: height * 0.14,
                           child: Center(
@@ -70,7 +70,6 @@ class WelcomeScreen extends StatelessWidget {
                           ),
                         ),
                         const Spacer(),
-                        // عنوان بسيط فوق الخلفية
                         Text(
                           'Welcome to Shoofha',
                           style: theme.textTheme.titleLarge?.copyWith(
@@ -93,131 +92,177 @@ class WelcomeScreen extends StatelessWidget {
                   ),
                 ),
 
-                // الكارد في النص
+                // ✅ الجزء السفلي صار Scrollable لحل overflow 100%
                 Expanded(
                   child: Padding(
                     padding: EdgeInsets.symmetric(
                       horizontal: horizontalPadding,
                     ),
-                    child: Column(
-                      children: [
-                        // Card عائم
-                        Transform.translate(
-                          offset: Offset(0, -height * 0.06),
-                          child: Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: width * 0.06,
-                              vertical: height * 0.022,
-                            ),
-                            decoration: BoxDecoration(
-                              color: theme.cardColor,
-                              borderRadius: BorderRadius.circular(cardRadius),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(
-                                    theme.brightness == Brightness.light
-                                        ? 0.06
-                                        : 0.4,
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.only(bottom: height * 0.02),
+                      child: Column(
+                        children: [
+                          // Card عائم
+                          Transform.translate(
+                            offset: Offset(0, -height * 0.06),
+                            child: Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: width * 0.06,
+                                vertical: height * 0.022,
+                              ),
+                              decoration: BoxDecoration(
+                                color: theme.cardColor,
+                                borderRadius: BorderRadius.circular(cardRadius),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(
+                                      theme.brightness == Brightness.light
+                                          ? 0.06
+                                          : 0.4,
+                                    ),
+                                    blurRadius: height * 0.03,
+                                    offset: Offset(0, height * 0.015),
                                   ),
-                                  blurRadius: height * 0.03,
-                                  offset: Offset(0, height * 0.015),
-                                ),
-                              ],
-                            ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  'Shop. Discover. Connect.',
-                                  style: theme.textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.w700,
+                                ],
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'Shop. Discover. Connect.',
+                                    style: theme.textTheme.titleMedium
+                                        ?.copyWith(fontWeight: FontWeight.w700),
+                                    textAlign: TextAlign.center,
                                   ),
-                                  textAlign: TextAlign.center,
-                                ),
-                                SizedBox(height: vSpaceSm),
-                                Text(
-                                  'A curated world of local stores, brands and experiences in one app.',
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    color: theme.textTheme.bodyMedium?.color
-                                        ?.withOpacity(0.7),
+                                  SizedBox(height: vSpaceSm),
+                                  Text(
+                                    'A curated world of local stores, brands and experiences in one app.',
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      color: theme.textTheme.bodyMedium?.color
+                                          ?.withOpacity(0.7),
+                                    ),
+                                    textAlign: TextAlign.center,
                                   ),
-                                  textAlign: TextAlign.center,
-                                ),
-                                SizedBox(height: vSpaceMd),
+                                  SizedBox(height: vSpaceMd),
 
-                                // 3 Features
-                                _WelcomeFeatureRow(
-                                  icon: Icons.storefront_outlined,
-                                  text: 'Explore unique local & online stores.',
-                                ),
-                                SizedBox(height: vSpaceSm),
-                                _WelcomeFeatureRow(
-                                  icon: Icons.favorite_border,
-                                  text: 'Save your favorite products & brands.',
-                                ),
-                                SizedBox(height: vSpaceSm),
-                                _WelcomeFeatureRow(
-                                  icon: Icons.notifications_none,
-                                  text:
-                                      'Get notified about offers that match you.',
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-
-                        const Spacer(),
-
-                        // زر Log in
-                        SizedBox(
-                          width: double.infinity,
-                          height: height * 0.065,
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              gradient:
-                                  shoofhaTheme?.primaryButtonGradient ??
-                                  const LinearGradient(
-                                    colors: [AppColors.navy, AppColors.purple],
+                                  // 3 Features
+                                  _WelcomeFeatureRow(
+                                    icon: Icons.storefront_outlined,
+                                    text:
+                                        'Explore unique local & online stores.',
                                   ),
-                              borderRadius: BorderRadius.circular(
-                                height * 0.032,
+                                  SizedBox(height: vSpaceSm),
+                                  _WelcomeFeatureRow(
+                                    icon: Icons.favorite_border,
+                                    text:
+                                        'Save your favorite products & brands.',
+                                  ),
+                                  SizedBox(height: vSpaceSm),
+                                  _WelcomeFeatureRow(
+                                    icon: Icons.notifications_none,
+                                    text:
+                                        'Get notified about offers that match you.',
+                                  ),
+                                ],
                               ),
                             ),
-                            child: Material(
-                              type: MaterialType.transparency,
-                              child: InkWell(
+                          ),
+
+                          // بدل Spacer: مسافة ثابتة نسبياً (Responsive)
+                          SizedBox(height: vSpaceMd),
+
+                          // زر Log in
+                          SizedBox(
+                            width: double.infinity,
+                            height: height * 0.065,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                gradient:
+                                    shoofhaTheme?.primaryButtonGradient ??
+                                    const LinearGradient(
+                                      colors: [
+                                        AppColors.navy,
+                                        AppColors.purple,
+                                      ],
+                                    ),
                                 borderRadius: BorderRadius.circular(
                                   height * 0.032,
                                 ),
-                                onTap: () => context.go('/login'),
-                                child: Center(
-                                  child: Text(
-                                    'Log in',
-                                    style: theme.textTheme.labelLarge?.copyWith(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w600,
+                              ),
+                              child: Material(
+                                type: MaterialType.transparency,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(
+                                    height * 0.032,
+                                  ),
+                                  onTap: () => context.go('/login'),
+                                  child: Center(
+                                    child: Text(
+                                      'Log in',
+                                      style: theme.textTheme.labelLarge
+                                          ?.copyWith(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w600,
+                                          ),
                                     ),
                                   ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
 
-                        SizedBox(height: vSpaceSm),
+                          SizedBox(height: vSpaceSm),
 
-                        // زر Sign up
-                        SizedBox(
-                          width: double.infinity,
-                          height: height * 0.065,
-                          child: OutlinedButton(
-                            onPressed: () => context.go('/signup'),
-                            child: const Text('Sign up'),
+                          // زر Sign up
+                          SizedBox(
+                            width: double.infinity,
+                            height: height * 0.065,
+                            child: OutlinedButton(
+                              onPressed: () => context.go('/signup'),
+                              style: OutlinedButton.styleFrom(
+                                side: BorderSide(
+                                  color: colorScheme.outline.withOpacity(0.4),
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                    height * 0.032,
+                                  ),
+                                ),
+                              ),
+                              child: const Text('Sign up'),
+                            ),
                           ),
-                        ),
 
-                        SizedBox(height: vSpaceLg * 0.8),
-                      ],
+                          SizedBox(height: vSpaceSm * 0.8),
+
+                          // Continue as Guest
+                          TextButton(
+                            onPressed: () async {
+                              await authNotifier.continueAsGuest();
+                              if (context.mounted) {
+                                context.go('/app');
+                              }
+                            },
+                            style: TextButton.styleFrom(
+                              minimumSize: Size(width * 0.6, height * 0.048),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(
+                                  height * 0.03,
+                                ),
+                              ),
+                            ),
+                            child: Text(
+                              'Continue as a guest',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: colorScheme.secondary,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+
+                          SizedBox(height: vSpaceLg * 0.6),
+                        ],
+                      ),
                     ),
                   ),
                 ),

@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:shoofha/features/auth/application/auth_notifier.dart';
-import '../widgets/auth_header.dart';
-import '../widgets/auth_primary_button.dart';
-import '../widgets/auth_text_field.dart';
+import 'package:shoofha/features/auth/presentation/widgets/auth_header.dart';
+import 'package:shoofha/features/auth/presentation/widgets/auth_primary_button.dart';
+import 'package:shoofha/features/auth/presentation/widgets/auth_text_field.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -20,6 +20,42 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscure = true;
   bool _loading = false;
 
+  String? _emailError;
+  String? _passwordError;
+
+  bool get _canSubmit =>
+      _emailError == null &&
+      _passwordError == null &&
+      _emailController.text.trim().isNotEmpty &&
+      _passwordController.text.trim().isNotEmpty;
+
+  String? _validateEmail(String v) {
+    final value = v.trim();
+    if (value.isEmpty) return null; // ✅ ما نزعّج اليوزر وهو فاضي
+    final ok = value.contains('@') && value.contains('.') && value.length >= 5;
+    return ok ? null : 'Email is not valid';
+  }
+
+  String? _validatePassword(String v) {
+    final value = v.trim();
+    if (value.isEmpty) return null;
+    return value.length >= 6 ? null : 'Password must be at least 6 characters';
+  }
+
+  void _runValidation() {
+    setState(() {
+      _emailError = _validateEmail(_emailController.text);
+      _passwordError = _validatePassword(_passwordController.text);
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _emailController.addListener(_runValidation);
+    _passwordController.addListener(_runValidation);
+  }
+
   @override
   void dispose() {
     _emailController.dispose();
@@ -30,6 +66,10 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _onLogin() async {
     if (_loading) return;
 
+    // ✅ تأكيد نهائي قبل الإرسال
+    _runValidation();
+    if (!_canSubmit) return;
+
     setState(() => _loading = true);
 
     try {
@@ -37,14 +77,14 @@ class _LoginScreenState extends State<LoginScreen> {
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
-      // GoRouter redirect رح يتكفّل ينقله لـ /app
+
+      if (mounted) {
+        context.go('/app');
+      }
     } catch (e) {
       debugPrint('Login error: $e');
-      // TODO: ممكن تحط SnackBar لرسالة خطأ أنيقة
     } finally {
-      if (mounted) {
-        setState(() => _loading = false);
-      }
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -60,7 +100,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final horizontalPadding = width * 0.08;
     final verticalSpacingSmall = height * 0.015;
     final verticalSpacingMedium = height * 0.025;
-    final verticalSpacingLarge = height * 0.035;
+    final verticalSpacingLarge = height * 0.04;
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
@@ -75,52 +115,51 @@ class _LoginScreenState extends State<LoginScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     SizedBox(height: height * 0.01),
-                    // العنوان الرئيسي
+
                     Text(
-                      // TODO: استبدلها لاحقاً بـ AppLocalizations
-                      'Log in',
+                      'Sign in',
                       style: theme.textTheme.headlineSmall?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    SizedBox(height: verticalSpacingSmall),
+                    SizedBox(height: height * 0.008),
                     Text(
-                      'Welcome back to Shoofha!',
+                      'Welcome back! Enter your details to continue.',
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: theme.textTheme.bodyMedium?.color?.withOpacity(
                           0.7,
                         ),
                       ),
                     ),
-                    SizedBox(height: verticalSpacingLarge),
-
-                    // حقل الإيميل
-                    AuthTextField(
-                      label: 'Email',
-                      hint: 'Enter your email',
-                      prefixIcon: Icons.mail_outline,
-                      controller: _emailController,
-                      keyboardType: TextInputType.emailAddress,
-                    ),
                     SizedBox(height: verticalSpacingMedium),
 
-                    // حقل الباسورد
+                    AuthTextField(
+                      label: 'Email',
+                      hint: 'you@example.com',
+                      prefixIcon: Icons.email_outlined,
+                      controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
+                      errorText: _emailError,
+                    ),
+
+                    SizedBox(height: verticalSpacingSmall),
+
                     AuthTextField(
                       label: 'Password',
-                      hint: 'Enter your password',
+                      hint: '••••••••',
                       prefixIcon: Icons.lock_outline,
                       controller: _passwordController,
                       obscure: _obscure,
-                      onToggleObscure: () {
-                        setState(() {
-                          _obscure = !_obscure;
-                        });
-                      },
+                      onToggleObscure: () =>
+                          setState(() => _obscure = !_obscure),
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) => _onLogin(),
+                      errorText: _passwordError,
                     ),
 
                     SizedBox(height: height * 0.008),
 
-                    // Forgot password
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
@@ -144,7 +183,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
                     SizedBox(height: verticalSpacingMedium),
 
-                    // زر تسجيل الدخول (Gradient)
                     if (_loading)
                       SizedBox(
                         width: double.infinity,
@@ -152,11 +190,14 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: const Center(child: CircularProgressIndicator()),
                       )
                     else
-                      AuthPrimaryButton(label: 'Sign in', onPressed: _onLogin),
+                      AuthPrimaryButton(
+                        label: 'Sign in',
+                        onPressed: _onLogin,
+                        enabled: _canSubmit, // ✅
+                      ),
 
                     SizedBox(height: verticalSpacingSmall),
 
-                    // Divider نصي بسيط
                     Center(
                       child: Padding(
                         padding: EdgeInsets.symmetric(vertical: height * 0.015),
@@ -170,26 +211,21 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
 
-                    // أزرار سوشال (شكل فقط الآن)
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _SocialButton(
-                          label: 'Google',
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _SocialButton(
+                            label: 'Google',
                             icon: Icons.g_mobiledata,
-                            onTap: () {
-                              // TODO: Google sign-in
-                            },
+                            onTap: () {},
                           ),
                         ),
                         SizedBox(width: width * 0.04),
-                      Expanded(
-                        child: _SocialButton(
-                          label: 'Apple',
-                          icon: Icons.apple,
-                            onTap: () {
-                              // TODO: Apple sign-in
-                            },
+                        Expanded(
+                          child: _SocialButton(
+                            label: 'Apple',
+                            icon: Icons.apple,
+                            onTap: () {},
                           ),
                         ),
                       ],
@@ -197,7 +233,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
                     SizedBox(height: verticalSpacingLarge),
 
-                    // "ما عندك حساب؟"
                     Center(
                       child: Wrap(
                         alignment: WrapAlignment.center,
@@ -232,7 +267,6 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
-/// زر سوشال بسيط، برضه بدون سايزات ثابتة
 class _SocialButton extends StatelessWidget {
   final String label;
   final IconData icon;
@@ -247,41 +281,30 @@ class _SocialButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final cs = theme.colorScheme;
     final size = MediaQuery.of(context).size;
     final height = size.height;
 
-    final borderRadius = BorderRadius.circular(height * 0.02);
+    final radius = height * 0.02;
 
-    return SizedBox(
-      height: height * 0.06,
-      child: DecoratedBox(
+    return InkWell(
+      borderRadius: BorderRadius.circular(radius),
+      onTap: onTap,
+      child: Container(
+        height: height * 0.06,
         decoration: BoxDecoration(
-          color: theme.cardColor,
-          borderRadius: borderRadius,
-          border: Border.all(
-            color: colorScheme.outline.withOpacity(0.2),
-            width: height * 0.0012,
-          ),
+          borderRadius: BorderRadius.circular(radius),
+          border: Border.all(color: cs.outline.withOpacity(0.25)),
+          color: cs.surface,
         ),
-        child: Material(
-          type: MaterialType.transparency,
-          child: InkWell(
-            borderRadius: borderRadius,
-            onTap: onTap,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(icon, size: height * 0.028, color: theme.iconTheme.color),
-                SizedBox(width: size.width * 0.02),
-                Text(
-                  label,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
+        child: Center(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: cs.onSurface.withOpacity(0.75)),
+              SizedBox(width: size.width * 0.02),
+              Text(label, style: theme.textTheme.bodyMedium),
+            ],
           ),
         ),
       ),

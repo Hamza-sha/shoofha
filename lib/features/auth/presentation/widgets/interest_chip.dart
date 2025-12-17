@@ -14,8 +14,21 @@ class InterestChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final primaryColor = Theme.of(context).colorScheme.primary;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
     final size = MediaQuery.of(context).size;
+
+    final isLight = theme.brightness == Brightness.light;
+
+    final bg = selected
+        ? cs.primary
+        : cs.surfaceContainerHighest.withOpacity(isLight ? 0.55 : 0.18);
+
+    final border = selected
+        ? Colors.transparent
+        : cs.outline.withOpacity(isLight ? 0.22 : 0.16);
+
+    final textColor = selected ? cs.onPrimary : cs.onSurface.withOpacity(0.9);
 
     return InkWell(
       borderRadius: BorderRadius.circular(size.height * 0.028),
@@ -26,14 +39,15 @@ class InterestChip extends StatelessWidget {
           vertical: size.height * 0.012,
         ),
         decoration: BoxDecoration(
-          color: selected ? primaryColor : Colors.grey.shade100,
+          color: bg,
           borderRadius: BorderRadius.circular(size.height * 0.028),
+          border: Border.all(color: border, width: size.height * 0.0012),
         ),
         child: Text(
           label,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: selected ? Colors.white : Colors.black87,
-            fontWeight: FontWeight.w500,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: textColor,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ),
