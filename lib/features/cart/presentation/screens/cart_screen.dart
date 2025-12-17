@@ -50,11 +50,9 @@ class CartScreen extends ConsumerWidget {
                   children: [
                     SizedBox(height: vSpaceSm),
 
-                    // ملخص بسيط أعلى
                     _CartHeaderSummary(itemCount: totalItems),
                     SizedBox(height: vSpaceSm),
 
-                    // قائمة المنتجات
                     Expanded(
                       child: ListView.separated(
                         itemCount: cartState.items.length,
@@ -68,7 +66,6 @@ class CartScreen extends ConsumerWidget {
 
                     SizedBox(height: vSpaceSm),
 
-                    // ملخص الفاتورة + زر إتمام الشراء
                     _CartBottomSummary(
                       cartState: cartState,
                       totalItems: totalItems,
@@ -143,10 +140,7 @@ class _EmptyCart extends StatelessWidget {
             width: width * 0.6,
             height: height * 0.055,
             child: FilledButton(
-              onPressed: () {
-                // رجّعو على الـ MainShell (ممكن لاحقاً نبدّل التاب للاستكشاف)
-                context.go('/app');
-              },
+              onPressed: () => context.go('/app'),
               style: FilledButton.styleFrom(
                 backgroundColor: colorScheme.secondary,
               ),
@@ -159,7 +153,7 @@ class _EmptyCart extends StatelessWidget {
   }
 }
 
-/// ملخص أعلى: عدد المنتجات
+/// ملخص أعلى
 class _CartHeaderSummary extends StatelessWidget {
   final int itemCount;
 
@@ -193,15 +187,11 @@ class _CartHeaderSummary extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(
-            Icons.shopping_bag_outlined,
-            size: height * 0.026,
-            color: theme.iconTheme.color,
-          ),
+          Icon(Icons.shopping_bag_outlined, size: height * 0.026),
           SizedBox(width: width * 0.02),
           Expanded(
             child: Text(
-              'لديك $itemCount عنصر${itemCount == 1 ? '' : ''} في السلة',
+              'لديك $itemCount عنصر في السلة',
               style: theme.textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
@@ -227,9 +217,7 @@ class _CartItemCard extends ConsumerWidget {
     final height = size.height;
 
     final radius = height * 0.020;
-
     final product = item.product;
-    final title = product.name;
 
     final controller = ref.read(cartControllerProvider.notifier);
 
@@ -251,7 +239,6 @@ class _CartItemCard extends ConsumerWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // صورة المنتج / Placeholder ملون حسب لون المنتج
           Container(
             width: height * 0.085,
             height: height * 0.085,
@@ -262,8 +249,6 @@ class _CartItemCard extends ConsumerWidget {
                   product.color.withOpacity(0.95),
                   product.color.withOpacity(0.75),
                 ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
               ),
             ),
             child: Center(
@@ -278,37 +263,50 @@ class _CartItemCard extends ConsumerWidget {
           ),
           SizedBox(width: width * 0.03),
 
-          // معلومات المنتج
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // اسم المنتج + زر حذف
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
                       child: Text(
-                        title,
+                        product.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.bodyLarge?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    SizedBox(width: width * 0.02),
                     _CartIconButton(
                       icon: Icons.delete_outline_rounded,
                       onPressed: () {
+                        final removedItem = item;
                         controller.removeItem(product.id);
+
+                        ScaffoldMessenger.of(context).clearSnackBars();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('تم حذف ${product.name}'),
+                            action: SnackBarAction(
+                              label: 'تراجع',
+                              onPressed: () {
+                                ref
+                                    .read(cartControllerProvider.notifier)
+                                    .addItem(
+                                      removedItem.product,
+                                      quantity: removedItem.quantity,
+                                    );
+                              },
+                            ),
+                          ),
+                        );
                       },
                     ),
                   ],
                 ),
                 SizedBox(height: height * 0.006),
-
-                // سعر القطعة
                 Text(
                   '${product.price.toStringAsFixed(2)} د.أ للقطعة',
                   style: theme.textTheme.bodyMedium?.copyWith(
@@ -317,21 +315,21 @@ class _CartItemCard extends ConsumerWidget {
                 ),
                 SizedBox(height: height * 0.010),
 
-                // الكمية + المجموع
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // التحكم في الكمية
                     Row(
                       children: [
                         _QuantityButton(
                           icon: Icons.remove_rounded,
-                          onPressed: () {
-                            controller.updateQuantity(
-                              product.id,
-                              item.quantity - 1,
-                            );
-                          },
+                          onPressed: item.quantity > 1
+                              ? () {
+                                  controller.updateQuantity(
+                                    product.id,
+                                    item.quantity - 1,
+                                  );
+                                }
+                              : null,
                         ),
                         Padding(
                           padding: EdgeInsets.symmetric(
@@ -355,8 +353,6 @@ class _CartItemCard extends ConsumerWidget {
                         ),
                       ],
                     ),
-
-                    // مجموع هذا المنتج
                     Text(
                       '${item.totalPrice.toStringAsFixed(2)} د.أ',
                       style: theme.textTheme.bodyMedium?.copyWith(
@@ -376,13 +372,12 @@ class _CartItemCard extends ConsumerWidget {
 
 class _QuantityButton extends StatelessWidget {
   final IconData icon;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
-  const _QuantityButton({required this.icon, required this.onPressed});
+  const _QuantityButton({required this.icon, this.onPressed});
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final size = MediaQuery.sizeOf(context);
     final height = size.height;
 
@@ -393,9 +388,15 @@ class _QuantityButton extends StatelessWidget {
         padding: EdgeInsets.all(height * 0.004),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(height * 0.016),
-          border: Border.all(color: theme.dividerColor.withOpacity(0.6)),
+          border: Border.all(
+            color: Theme.of(context).dividerColor.withOpacity(0.6),
+          ),
         ),
-        child: Icon(icon, size: height * 0.020),
+        child: Icon(
+          icon,
+          size: height * 0.020,
+          color: onPressed == null ? Colors.grey : null,
+        ),
       ),
     );
   }
@@ -409,7 +410,6 @@ class _CartIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final size = MediaQuery.sizeOf(context);
     final height = size.height;
 
@@ -418,13 +418,13 @@ class _CartIconButton extends StatelessWidget {
       onTap: onPressed,
       child: Padding(
         padding: EdgeInsets.all(height * 0.006),
-        child: Icon(icon, size: height * 0.020, color: theme.iconTheme.color),
+        child: Icon(icon, size: height * 0.020),
       ),
     );
   }
 }
 
-/// ملخص أسفل: المجموع + التوصيل + الإجمالي + زر إتمام الشراء
+/// ملخص أسفل
 class _CartBottomSummary extends StatelessWidget {
   final CartState cartState;
   final int totalItems;
@@ -435,12 +435,11 @@ class _CartBottomSummary extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final shoofhaTheme = theme.extension<ShoofhaTheme>();
-    final colorScheme = theme.colorScheme;
     final size = MediaQuery.sizeOf(context);
     final width = size.width;
     final height = size.height;
 
-    final vSpaceXs = height * 0.012;
+    final isDisabled = cartState.items.isEmpty;
 
     return Container(
       width: double.infinity,
@@ -463,62 +462,35 @@ class _CartBottomSummary extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // ملخص القيم
-          _SummaryRow(
-            label: 'المجموع ($totalItems منتج)',
-            value: '${cartState.subTotal.toStringAsFixed(2)} د.أ',
-          ),
-          SizedBox(height: vSpaceXs * 0.7),
-          _SummaryRow(
-            label: 'رسوم التوصيل',
-            value: cartState.deliveryFee == 0
-                ? 'مجاني'
-                : '${cartState.deliveryFee.toStringAsFixed(2)} د.أ',
-            valueStyle: cartState.deliveryFee == 0
-                ? theme.textTheme.bodyMedium?.copyWith(
-                    color: Colors.green,
-                    fontWeight: FontWeight.w600,
-                  )
-                : null,
-          ),
-          SizedBox(height: vSpaceXs),
-          Divider(
-            height: vSpaceXs * 2,
-            color: theme.dividerColor.withOpacity(0.4),
-          ),
-          SizedBox(height: vSpaceXs * 0.5),
           _SummaryRow(
             label: 'الإجمالي',
             value: '${cartState.total.toStringAsFixed(2)} د.أ',
             isBold: true,
           ),
-          SizedBox(height: vSpaceXs * 1.4),
-
-          // زر إتمام الشراء
+          SizedBox(height: height * 0.02),
           SizedBox(
             width: double.infinity,
             height: height * 0.058,
             child: DecoratedBox(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(height * 0.016),
-                gradient: shoofhaTheme?.primaryButtonGradient,
+                gradient: isDisabled
+                    ? null
+                    : shoofhaTheme?.primaryButtonGradient,
+                color: isDisabled ? Colors.grey.shade400 : null,
               ),
               child: FilledButton(
-                onPressed: () {
-                  // ننتقل لصفحة إتمام الطلب (Checkout)
-                  context.goNamed('checkout');
-                },
+                onPressed: isDisabled
+                    ? null
+                    : () => context.goNamed('checkout'),
                 style: FilledButton.styleFrom(
                   backgroundColor: Colors.transparent,
                   shadowColor: Colors.transparent,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(height * 0.016),
-                  ),
                 ),
                 child: Text(
                   'إتمام الشراء',
                   style: theme.textTheme.titleSmall?.copyWith(
-                    color: colorScheme.onPrimary,
+                    color: Colors.white,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -535,40 +507,32 @@ class _SummaryRow extends StatelessWidget {
   final String label;
   final String value;
   final bool isBold;
-  final TextStyle? valueStyle;
 
   const _SummaryRow({
     required this.label,
     required this.value,
     this.isBold = false,
-    this.valueStyle,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final size = MediaQuery.sizeOf(context);
-    final width = size.width;
-    final height = size.height;
-
     final baseStyle = theme.textTheme.bodyMedium;
-    final labelStyle = isBold
-        ? baseStyle?.copyWith(fontWeight: FontWeight.w700)
-        : baseStyle;
-    final effectiveValueStyle =
-        valueStyle ??
-        (isBold ? baseStyle?.copyWith(fontWeight: FontWeight.w700) : baseStyle);
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: labelStyle),
-        SizedBox(width: width * 0.02),
+        Text(
+          label,
+          style: isBold
+              ? baseStyle?.copyWith(fontWeight: FontWeight.w700)
+              : baseStyle,
+        ),
         Text(
           value,
-          style: effectiveValueStyle?.copyWith(
-            fontSize: baseStyle?.fontSize ?? height * 0.018,
-          ),
+          style: isBold
+              ? baseStyle?.copyWith(fontWeight: FontWeight.w700)
+              : baseStyle,
         ),
       ],
     );

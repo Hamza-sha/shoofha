@@ -21,27 +21,58 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
   int _currentTabIndex = 0; // 0: Reels, 1: Products, 2: Reviews
   bool _isFavorite = false;
 
+  // متابعة المتجر
+  bool _isFollowing = false;
+
   @override
   void initState() {
     super.initState();
 
-    // نحاول نجيب المتجر حسب الـ id، لو ما لقيناه ناخذ أول واحد تجريبي
     store = kStores.firstWhere(
       (s) => s.id == widget.storeId,
       orElse: () => kStores.first,
     );
 
-    // المنتجات الخاصة بالمتجر
     storeProducts = kStoreProducts.where((p) => p.storeId == store.id).toList();
   }
 
   Future<void> _toggleFavorite() async {
     final allowed = await requireLogin(context);
     if (!allowed) return;
+    if (!mounted) return;
 
     setState(() {
       _isFavorite = !_isFavorite;
     });
+  }
+
+  Future<void> _toggleFollow() async {
+    final allowed = await requireLogin(context);
+    if (!allowed) return;
+    if (!mounted) return;
+
+    setState(() {
+      _isFollowing = !_isFollowing;
+    });
+
+    // SnackBar محترم
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          _isFollowing ? 'تمت متابعة المتجر ✅' : 'تم إلغاء متابعة المتجر',
+        ),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  Future<void> _contactStore() async {
+    final allowed = await requireLogin(context);
+    if (!allowed) return;
+    if (!mounted) return;
+
+    context.pushNamed('chat', pathParameters: {'id': store.id});
   }
 
   void _openProduct(StoreProduct product) {
@@ -57,6 +88,12 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
 
     final horizontalPadding = width * 0.06;
     final vSpaceMd = height * 0.024;
+
+    // لون زر المتابعة حسب الحالة (بدون تغيير ديزاين)
+    final followBg = _isFollowing
+        ? AppColors.teal.withOpacity(0.88)
+        : AppColors.navy;
+    final followFg = Colors.white;
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -83,6 +120,75 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                       _StoreStatsRow(store: store),
                       SizedBox(height: height * 0.022),
 
+                      // CTA Row
+                      Row(
+                        children: [
+                          Expanded(
+                            child: SizedBox(
+                              height: height * 0.055,
+                              child: ElevatedButton(
+                                onPressed: _toggleFollow,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: followBg,
+                                  foregroundColor: followFg,
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(
+                                      height * 0.018,
+                                    ),
+                                    side: _isFollowing
+                                        ? BorderSide(
+                                            color: Colors.white.withOpacity(
+                                              0.35,
+                                            ),
+                                            width: 1,
+                                          )
+                                        : BorderSide.none,
+                                  ),
+                                ),
+                                child: Text(
+                                  _isFollowing ? 'متابَع' : 'متابعة المتجر',
+                                ),
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: width * 0.03),
+                          Expanded(
+                            child: SizedBox(
+                              height: height * 0.055,
+                              child: OutlinedButton(
+                                onPressed: _contactStore,
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppColors.navy,
+                                  side: BorderSide(
+                                    color: AppColors.navy.withOpacity(0.35),
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(
+                                      height * 0.018,
+                                    ),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.chat_bubble_outline_rounded,
+                                      size: height * 0.022,
+                                      color: AppColors.navy,
+                                    ),
+                                    SizedBox(width: width * 0.02),
+                                    const Text('تواصل'),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      SizedBox(height: height * 0.024),
+
                       const _SectionTitle(title: 'عن المتجر'),
                       SizedBox(height: height * 0.008),
                       Text(
@@ -103,7 +209,6 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
 
                       SizedBox(height: height * 0.024),
 
-                      // Tabs: ريلز / منتجات / تقييمات
                       _StoreTabs(
                         currentIndex: _currentTabIndex,
                         onChanged: (i) {
@@ -112,7 +217,6 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                       ),
                       SizedBox(height: height * 0.016),
 
-                      // محتوى التبويب
                       if (_currentTabIndex == 0)
                         _StoreReelsPlaceholder(store: store)
                       else if (_currentTabIndex == 1)
@@ -122,6 +226,7 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                         )
                       else
                         const _StoreReviewsSection(),
+
                       SizedBox(height: height * 0.030),
                     ],
                   ),
@@ -176,11 +281,9 @@ class _StoreHeader extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Back + icon
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // back
                 Container(
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(.15),
@@ -205,7 +308,6 @@ class _StoreHeader extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Avatar
                 Container(
                   width: height * 0.065,
                   height: height * 0.065,
@@ -462,7 +564,6 @@ class _StoreTagsRow extends StatelessWidget {
   }
 }
 
-/// تبويبات ريلز / منتجات / تقييمات
 class _StoreTabs extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onChanged;
@@ -571,7 +672,6 @@ class _TabChip extends StatelessWidget {
   }
 }
 
-/// تبويب: ريلز المتجر (placeholder حالياً)
 class _StoreReelsPlaceholder extends StatelessWidget {
   final StoreModel store;
 
@@ -635,7 +735,6 @@ class _StoreReelsPlaceholder extends StatelessWidget {
   }
 }
 
-/// تبويب: منتجات المتجر
 class _StoreProductsList extends StatelessWidget {
   final List<StoreProduct> products;
   final ValueChanged<StoreProduct> onProductTap;
@@ -670,7 +769,7 @@ class _StoreProductsList extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _SectionTitle(title: 'منتجات المتجر'),
+        const _SectionTitle(title: 'منتجات المتجر'),
         SizedBox(height: height * 0.012),
         ListView.separated(
           shrinkWrap: true,
@@ -766,7 +865,6 @@ class _StoreProductsList extends StatelessWidget {
   }
 }
 
-/// تبويب: التقييمات (UI تجريبي حالياً)
 class _StoreReviewsSection extends StatelessWidget {
   const _StoreReviewsSection();
 
@@ -782,7 +880,7 @@ class _StoreReviewsSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _SectionTitle(title: 'التقييمات'),
+        const _SectionTitle(title: 'التقييمات'),
         SizedBox(height: height * 0.012),
         if (reviews.isEmpty)
           Container(
@@ -895,7 +993,6 @@ class _StoreReviewsSection extends StatelessWidget {
   }
 }
 
-/// نموذج تقييم بسيط تجريبي
 class _Review {
   final String userName;
   final double rating;
