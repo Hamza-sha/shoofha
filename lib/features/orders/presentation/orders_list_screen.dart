@@ -1,9 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
 import 'package:shoofha/core/theme/app_colors.dart';
+import 'package:shoofha/features/main_shell/presentation/main_shell.dart';
 
 class OrdersListScreen extends StatelessWidget {
   const OrdersListScreen({super.key});
+
+  void _safeBack(BuildContext context) {
+    final router = GoRouter.of(context);
+    if (router.canPop()) {
+      router.pop();
+      return;
+    }
+
+    // ✅ fallback عالمي: نرجع للـ Shell ونفتح Hub الطلبات (حاليًا تحت Profile)
+    MainShellTabs.goOrdersHub();
+    context.go('/app');
+  }
+
+  void _goHome(BuildContext context) {
+    MainShellTabs.goHome();
+    context.go('/app');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -17,31 +36,37 @@ class OrdersListScreen extends StatelessWidget {
 
     final orders = _dummyOrders;
 
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      body: SafeArea(
-        child: Column(
-          children: [
-            const _OrdersHeader(),
-            Expanded(
-              child: orders.isEmpty
-                  ? _EmptyOrders(height: height)
-                  : SingleChildScrollView(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: horizontalPadding,
-                        vertical: vSpaceMd,
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: theme.scaffoldBackgroundColor,
+        body: SafeArea(
+          child: Column(
+            children: [
+              _OrdersHeader(onBack: () => _safeBack(context)),
+              Expanded(
+                child: orders.isEmpty
+                    ? _EmptyOrders(
+                        height: height,
+                        onCta: () => _goHome(context),
+                      )
+                    : SingleChildScrollView(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: horizontalPadding,
+                          vertical: vSpaceMd,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const _SectionLabel(text: 'طلباتي'),
+                            SizedBox(height: height * 0.014),
+                            ...orders.map((order) => _OrderCard(order: order)),
+                          ],
+                        ),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _SectionLabel(text: 'طلباتي'),
-                          SizedBox(height: height * 0.014),
-                          ...orders.map((order) => _OrderCard(order: order)),
-                        ],
-                      ),
-                    ),
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -49,7 +74,9 @@ class OrdersListScreen extends StatelessWidget {
 }
 
 class _OrdersHeader extends StatelessWidget {
-  const _OrdersHeader();
+  final VoidCallback onBack;
+
+  const _OrdersHeader({required this.onBack});
 
   @override
   Widget build(BuildContext context) {
@@ -78,11 +105,11 @@ class _OrdersHeader extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Back + box icon
+            // Back + icon
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _backButton(context),
+                _BackButton(onPressed: onBack),
                 Icon(
                   Icons.inventory_2_outlined,
                   color: Colors.white.withOpacity(.9),
@@ -114,27 +141,26 @@ class _OrdersHeader extends StatelessWidget {
   }
 }
 
-/// ✅ تعديل مهم: back باستخدام GoRouter (أفضل مع ستاك الراوت)
-Widget _backButton(BuildContext context) {
-  final height = MediaQuery.sizeOf(context).height;
+class _BackButton extends StatelessWidget {
+  final VoidCallback onPressed;
 
-  return Container(
-    decoration: BoxDecoration(
-      color: Colors.white.withOpacity(.15),
-      borderRadius: BorderRadius.circular(height * 0.014),
-    ),
-    child: IconButton(
-      icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
-      onPressed: () {
-        if (context.canPop()) {
-          context.pop();
-        } else {
-          // احتياط: لو وصلت هون من deep link أو ستاك فاضي
-          context.goNamed('app');
-        }
-      },
-    ),
-  );
+  const _BackButton({required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    final height = MediaQuery.sizeOf(context).height;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(.15),
+        borderRadius: BorderRadius.circular(height * 0.014),
+      ),
+      child: IconButton(
+        icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+        onPressed: onPressed,
+      ),
+    );
+  }
 }
 
 class _SectionLabel extends StatelessWidget {
@@ -171,7 +197,6 @@ class _SectionLabel extends StatelessWidget {
   }
 }
 
-/// موديل داخلي بسيط للطلبات (UI فقط)
 class _OrderItem {
   final String id;
   final String storeName;
@@ -255,7 +280,6 @@ class _OrderCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // السطر الأول: رقم الطلب + الحالة
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -325,8 +349,9 @@ class _OrderCard extends StatelessWidget {
 
 class _EmptyOrders extends StatelessWidget {
   final double height;
+  final VoidCallback onCta;
 
-  const _EmptyOrders({required this.height});
+  const _EmptyOrders({required this.height, required this.onCta});
 
   @override
   Widget build(BuildContext context) {
@@ -362,6 +387,14 @@ class _EmptyOrders extends StatelessWidget {
                   height: 1.4,
                 ),
                 textAlign: TextAlign.center,
+              ),
+            ),
+            SizedBox(height: height * 0.018),
+            SizedBox(
+              width: width * 0.62,
+              child: FilledButton(
+                onPressed: onCta,
+                child: const Text('ابدأ التسوق'),
               ),
             ),
           ],

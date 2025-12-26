@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shoofha/core/theme/app_colors.dart';
 import 'package:shoofha/features/store/domain/store_models.dart';
 import 'package:shoofha/core/auth/guest_guard.dart';
+import 'package:shoofha/features/main_shell/presentation/main_shell.dart';
 
 class StoreProfileScreen extends StatefulWidget {
   final String storeId;
@@ -20,8 +21,6 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
 
   int _currentTabIndex = 0; // 0: Reels, 1: Products, 2: Reviews
   bool _isFavorite = false;
-
-  // متابعة المتجر
   bool _isFollowing = false;
 
   @override
@@ -36,14 +35,33 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
     storeProducts = kStoreProducts.where((p) => p.storeId == store.id).toList();
   }
 
+  void _safeBack(BuildContext context) {
+    final router = GoRouter.of(context);
+    if (router.canPop()) {
+      router.pop();
+      return;
+    }
+    // ✅ fallback آمن لو داخل من ديب لينك
+    MainShellTabs.goHome();
+    context.go('/app');
+  }
+
   Future<void> _toggleFavorite() async {
     final allowed = await requireLogin(context);
     if (!allowed) return;
     if (!mounted) return;
 
-    setState(() {
-      _isFavorite = !_isFavorite;
-    });
+    setState(() => _isFavorite = !_isFavorite);
+
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          _isFavorite ? 'تمت الإضافة للمفضلة ❤️' : 'تمت الإزالة من المفضلة',
+        ),
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   Future<void> _toggleFollow() async {
@@ -51,11 +69,8 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
     if (!allowed) return;
     if (!mounted) return;
 
-    setState(() {
-      _isFollowing = !_isFollowing;
-    });
+    setState(() => _isFollowing = !_isFollowing);
 
-    // SnackBar محترم
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -72,11 +87,23 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
     if (!allowed) return;
     if (!mounted) return;
 
+    // ✅ chat/:id عندك مبني على conversationId (واستخدمنا نفس id للمتجر)
     context.pushNamed('chat', pathParameters: {'id': store.id});
   }
 
   void _openProduct(StoreProduct product) {
     context.pushNamed('product', pathParameters: {'id': product.id});
+  }
+
+  void _shareStore(BuildContext context) {
+    // ✅ Placeholder عالمي (لاحقاً: share_plus)
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('قريباً: مشاركة المتجر 🔗'),
+        duration: Duration(seconds: 2),
+      ),
+    );
   }
 
   @override
@@ -89,7 +116,6 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
     final horizontalPadding = width * 0.06;
     final vSpaceMd = height * 0.024;
 
-    // لون زر المتابعة حسب الحالة (بدون تغيير ديزاين)
     final followBg = _isFollowing
         ? AppColors.teal.withOpacity(0.88)
         : AppColors.navy;
@@ -105,8 +131,9 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
               _StoreHeader(
                 store: store,
                 isFavorite: _isFavorite,
-                onBack: () => Navigator.of(context).maybePop(),
+                onBack: () => _safeBack(context),
                 onToggleFavorite: _toggleFavorite,
+                onShare: () => _shareStore(context),
               ),
               Expanded(
                 child: SingleChildScrollView(
@@ -211,18 +238,20 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
 
                       _StoreTabs(
                         currentIndex: _currentTabIndex,
-                        onChanged: (i) {
-                          setState(() => _currentTabIndex = i);
-                        },
+                        onChanged: (i) => setState(() => _currentTabIndex = i),
                       ),
                       SizedBox(height: height * 0.016),
 
                       if (_currentTabIndex == 0)
                         _StoreReelsPlaceholder(store: store)
                       else if (_currentTabIndex == 1)
-                        _StoreProductsList(
+                        _StoreProductsSection(
                           products: storeProducts,
                           onProductTap: _openProduct,
+                          onExplore: () {
+                            MainShellTabs.goExplore();
+                            context.go('/app');
+                          },
                         )
                       else
                         const _StoreReviewsSection(),
@@ -246,12 +275,14 @@ class _StoreHeader extends StatelessWidget {
   final bool isFavorite;
   final VoidCallback onBack;
   final VoidCallback onToggleFavorite;
+  final VoidCallback onShare;
 
   const _StoreHeader({
     required this.store,
     required this.isFavorite,
     required this.onBack,
     required this.onToggleFavorite,
+    required this.onShare,
   });
 
   @override
@@ -297,10 +328,23 @@ class _StoreHeader extends StatelessWidget {
                     onPressed: onBack,
                   ),
                 ),
-                Icon(
-                  Icons.storefront_outlined,
-                  color: Colors.white.withOpacity(.92),
-                  size: height * 0.032,
+                Row(
+                  children: [
+                    IconButton(
+                      tooltip: 'مشاركة',
+                      onPressed: onShare,
+                      icon: Icon(
+                        Icons.ios_share_rounded,
+                        color: Colors.white.withOpacity(.92),
+                        size: height * 0.028,
+                      ),
+                    ),
+                    Icon(
+                      Icons.storefront_outlined,
+                      color: Colors.white.withOpacity(.92),
+                      size: height * 0.032,
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -351,8 +395,9 @@ class _StoreHeader extends StatelessWidget {
                     ],
                   ),
                 ),
-                GestureDetector(
+                InkWell(
                   onTap: onToggleFavorite,
+                  borderRadius: BorderRadius.circular(999),
                   child: Container(
                     padding: EdgeInsets.all(height * 0.008),
                     decoration: BoxDecoration(
@@ -735,13 +780,16 @@ class _StoreReelsPlaceholder extends StatelessWidget {
   }
 }
 
-class _StoreProductsList extends StatelessWidget {
+/// ✅ منتجات: List على الموبايل + Grid على الشاشات الواسعة + Empty state محترم
+class _StoreProductsSection extends StatelessWidget {
   final List<StoreProduct> products;
   final ValueChanged<StoreProduct> onProductTap;
+  final VoidCallback onExplore;
 
-  const _StoreProductsList({
+  const _StoreProductsSection({
     required this.products,
     required this.onProductTap,
+    required this.onExplore,
   });
 
   @override
@@ -754,113 +802,174 @@ class _StoreProductsList extends StatelessWidget {
     if (products.isEmpty) {
       return Container(
         width: double.infinity,
-        padding: EdgeInsets.all(width * 0.04),
+        padding: EdgeInsets.all(width * 0.05),
         decoration: BoxDecoration(
           color: theme.cardColor,
           borderRadius: BorderRadius.circular(height * 0.018),
         ),
-        child: Text(
-          'لا يوجد منتجات مضافة لهذا المتجر حالياً.',
-          style: theme.textTheme.bodyMedium,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const _SectionTitle(title: 'منتجات المتجر'),
+            SizedBox(height: height * 0.010),
+            Text(
+              'لا يوجد منتجات مضافة لهذا المتجر حالياً.',
+              style: theme.textTheme.bodyMedium,
+            ),
+            SizedBox(height: height * 0.014),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: onExplore,
+                child: const Text('استكشف متاجر أخرى'),
+              ),
+            ),
+          ],
         ),
       );
     }
+
+    final isWide = width >= 900;
+    final crossAxisCount = width >= 1200 ? 3 : 2;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const _SectionTitle(title: 'منتجات المتجر'),
         SizedBox(height: height * 0.012),
-        ListView.separated(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: products.length,
-          separatorBuilder: (_, __) => SizedBox(height: height * 0.010),
-          itemBuilder: (context, index) {
-            final product = products[index];
-            return GestureDetector(
-              onTap: () => onProductTap(product),
-              child: Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: width * 0.04,
-                  vertical: height * 0.012,
-                ),
-                decoration: BoxDecoration(
-                  color: theme.cardColor,
-                  borderRadius: BorderRadius.circular(height * 0.018),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(
-                        theme.brightness == Brightness.light ? 0.03 : 0.18,
-                      ),
-                      blurRadius: height * 0.014,
-                      offset: Offset(0, height * 0.006),
-                    ),
+
+        if (!isWide)
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: products.length,
+            separatorBuilder: (_, __) => SizedBox(height: height * 0.010),
+            itemBuilder: (context, index) {
+              final product = products[index];
+              return _ProductRowCard(
+                product: product,
+                onTap: () => onProductTap(product),
+              );
+            },
+          )
+        else
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: products.length,
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              mainAxisSpacing: height * 0.012,
+              crossAxisSpacing: width * 0.03,
+              childAspectRatio: 2.35,
+            ),
+            itemBuilder: (context, index) {
+              final product = products[index];
+              return _ProductRowCard(
+                product: product,
+                onTap: () => onProductTap(product),
+              );
+            },
+          ),
+      ],
+    );
+  }
+}
+
+class _ProductRowCard extends StatelessWidget {
+  final StoreProduct product;
+  final VoidCallback onTap;
+
+  const _ProductRowCard({required this.product, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final size = MediaQuery.sizeOf(context);
+    final height = size.height;
+    final width = size.width;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(height * 0.018),
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: width * 0.04,
+          vertical: height * 0.012,
+        ),
+        decoration: BoxDecoration(
+          color: theme.cardColor,
+          borderRadius: BorderRadius.circular(height * 0.018),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(
+                theme.brightness == Brightness.light ? 0.03 : 0.18,
+              ),
+              blurRadius: height * 0.014,
+              offset: Offset(0, height * 0.006),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: height * 0.06,
+              height: height * 0.06,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [
+                    product.color.withOpacity(0.9),
+                    product.color.withOpacity(0.6),
                   ],
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: height * 0.06,
-                      height: height * 0.06,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          colors: [
-                            product.color.withOpacity(0.9),
-                            product.color.withOpacity(0.6),
-                          ],
-                          begin: Alignment.topRight,
-                          end: Alignment.bottomLeft,
-                        ),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        product.name.characters.first,
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: width * 0.03),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            product.name,
-                            style: theme.textTheme.bodyLarge?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          SizedBox(height: height * 0.004),
-                          Text(
-                            product.description,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.textTheme.bodySmall?.color
-                                  ?.withOpacity(0.7),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(width: width * 0.02),
-                    Text(
-                      '${product.price.toStringAsFixed(2)} د.أ',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
                 ),
               ),
-            );
-          },
+              alignment: Alignment.center,
+              child: Text(
+                product.name.isNotEmpty ? product.name.characters.first : '?',
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            SizedBox(width: width * 0.03),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    product.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  SizedBox(height: height * 0.004),
+                  Text(
+                    product.description,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.textTheme.bodySmall?.color?.withOpacity(0.7),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(width: width * 0.02),
+            Text(
+              '${product.price.toStringAsFixed(2)} د.أ',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }
@@ -930,7 +1039,9 @@ class _StoreReviewsSection extends StatelessWidget {
                           radius: height * 0.020,
                           backgroundColor: AppColors.teal.withOpacity(0.12),
                           child: Text(
-                            r.userName.characters.first,
+                            r.userName.isNotEmpty
+                                ? r.userName.characters.first
+                                : 'U',
                             style: theme.textTheme.bodyMedium?.copyWith(
                               fontWeight: FontWeight.bold,
                               color: AppColors.teal,
@@ -942,7 +1053,7 @@ class _StoreReviewsSection extends StatelessWidget {
                           child: Text(
                             r.userName,
                             style: theme.textTheme.bodyMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
                         ),
@@ -957,7 +1068,7 @@ class _StoreReviewsSection extends StatelessWidget {
                             Text(
                               r.rating.toStringAsFixed(1),
                               style: theme.textTheme.bodyMedium?.copyWith(
-                                fontWeight: FontWeight.w600,
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
                           ],

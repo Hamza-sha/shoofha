@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:shoofha/core/theme/app_colors.dart';
+import 'package:shoofha/features/main_shell/presentation/main_shell.dart';
 
 class OrderSuccessArgs {
   final String orderId;
@@ -27,6 +28,16 @@ class OrderSuccessScreen extends StatelessWidget {
     );
   }
 
+  void _goHome(BuildContext context) {
+    MainShellTabs.goHome();
+    context.go('/app');
+  }
+
+  void _goOrders(BuildContext context) {
+    // ✅ افتح شاشة الطلبات مباشرة (مش تبويب)
+    context.pushNamed('orders');
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -38,6 +49,11 @@ class OrderSuccessScreen extends StatelessWidget {
       textDirection: TextDirection.rtl,
       child: PopScope(
         canPop: false, // ✅ يمنع الرجوع للـ Checkout
+        onPopInvoked: (didPop) {
+          if (didPop) return;
+          // ✅ لو ضغط زر الرجوع (Android) رجّعه للرئيسية بدل ما يضل محبوس
+          _goHome(context);
+        },
         child: Scaffold(
           body: Container(
             width: double.infinity,
@@ -83,7 +99,6 @@ class OrderSuccessScreen extends StatelessWidget {
                     ),
                     SizedBox(height: h * 0.012),
 
-                    // ✅ تفاصيل + زر نسخ رقم الطلب
                     Container(
                       width: double.infinity,
                       padding: EdgeInsets.symmetric(
@@ -157,27 +172,20 @@ class OrderSuccessScreen extends StatelessWidget {
 
                     const Spacer(),
 
-                    // ✅ زر تتبع الطلب
                     SizedBox(
                       width: double.infinity,
                       child: FilledButton(
-                        onPressed: () {
-                          // حالياً يروح على الطلبات (لاحقاً: صفحة تفاصيل الطلب)
-                          context.goNamed('orders');
-                        },
+                        onPressed: () => _goOrders(context),
                         child: const Text('تتبع الطلب'),
                       ),
                     ),
 
                     SizedBox(height: h * 0.012),
 
-                    // ✅ رجوع للرئيسية (يمسح الستاك عملياً)
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton(
-                        onPressed: () {
-                          context.goNamed('app');
-                        },
+                        onPressed: () => _goHome(context),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.white,
                           side: BorderSide(

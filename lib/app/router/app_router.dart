@@ -9,6 +9,7 @@ import 'package:shoofha/features/auth/presentation/screens/otp_screen.dart';
 import 'package:shoofha/features/auth/presentation/screens/choose_interests_screen.dart';
 
 import 'package:shoofha/features/main_shell/presentation/main_shell.dart';
+import 'package:shoofha/features/orders/presentation/orders_list_screen.dart';
 
 import 'package:shoofha/features/settings/presentation/screens/settings_screen.dart';
 import 'package:shoofha/features/messaging/presentation/screens/notifications_screen.dart';
@@ -16,7 +17,7 @@ import 'package:shoofha/features/messaging/presentation/screens/notifications_sc
 import 'package:shoofha/features/messages/presentation/screens/messages_inbox_screen.dart';
 import 'package:shoofha/features/messages/presentation/screens/chat_screen.dart';
 
-import 'package:shoofha/features/commerce/presentation/screens/my_orders_screen.dart';
+import 'package:shoofha/features/commerce/presentation/screens/my_orders_screen.dart'; // إذا بدك تضل تستخدمه
 import 'package:shoofha/features/commerce/presentation/screens/checkout_screen.dart';
 import 'package:shoofha/features/commerce/presentation/screens/order_success_screen.dart';
 
@@ -69,7 +70,7 @@ final GoRouter appRouter = GoRouter(
     if (isLoggedIn &&
         hasCompletedInterests &&
         authFlowRoutes.contains(location)) {
-      return '/app'; // ✅ بدل /app/home
+      return '/app';
     }
 
     return null;
@@ -106,7 +107,7 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const ChooseInterestsScreen(),
     ),
 
-    // ✅ MainShell كـ Route عادي (بدون child)
+    // ✅ MainShell
     GoRoute(
       path: '/app',
       name: 'app',
@@ -157,10 +158,19 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const NotificationsScreen(),
     ),
 
+    // ✅ Orders (الأساسي) — هذا اللي لازم تروح عليه من OrderSuccess/Profile
     GoRoute(
       path: '/orders',
       name: 'orders',
-      builder: (context, state) => const OrdersScreen(),
+      builder: (context, state) => const OrdersListScreen(),
+    ),
+
+    // ✅ (اختياري) لو بدك تضل محتفظ بالشاشة القديمة OrdersScreen
+    // غيّر OrdersScreen حسب اسم ملفك القديم لو كان MyOrdersScreen أو غيره
+    GoRoute(
+      path: '/orders-legacy',
+      name: 'orders-legacy',
+      builder: (context, state) => const OrdersScreen(), // أو MyOrdersScreen()
     ),
 
     GoRoute(

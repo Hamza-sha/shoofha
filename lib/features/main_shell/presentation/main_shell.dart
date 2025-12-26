@@ -27,6 +27,12 @@ class MainShellTabs {
   static void goOffers() => setIndex(2);
   static void goCart() => setIndex(3);
   static void goProfile() => setIndex(4);
+
+  /// ✅ Global-friendly: "Orders Hub" عندك حاليا تحت Profile
+  /// (بعدين لو عملنا Orders Tab مستقل بس بنغير هذا السطر)
+  static void goOrdersHub() => goProfile();
+
+  static void goOrders() {}
 }
 
 class MainShell extends StatefulWidget {
@@ -192,7 +198,7 @@ class _MainShellState extends State<MainShell> {
       );
     }
 
-    // ✅ Mobile: NavigationBar (نفس تصميمك + polishing)
+    // ✅ Mobile: NavigationBar
     final navHeight = size.height * 0.085;
 
     return ValueListenableBuilder<int>(

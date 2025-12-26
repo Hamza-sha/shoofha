@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:shoofha/core/responsive/responsive.dart';
 import 'package:shoofha/core/theme/app_colors.dart';
+import 'package:shoofha/features/main_shell/presentation/main_shell.dart';
 
 class ChatScreen extends StatefulWidget {
   final String conversationId;
@@ -26,20 +28,41 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
-  String get _conversationTitle {
-    final conv = _dummyConversations
-        .where((c) => c.id == widget.conversationId)
-        .toList();
-    if (conv.isNotEmpty) return conv.first.name;
-    return 'المحادثة';
+  String get _storeId => widget.conversationId;
+
+  _Conversation? get _conversation {
+    try {
+      return _dummyConversations.firstWhere(
+        (c) => c.id == widget.conversationId,
+      );
+    } catch (_) {
+      return null;
+    }
   }
 
-  Color get _conversationColor {
-    final conv = _dummyConversations
-        .where((c) => c.id == widget.conversationId)
-        .toList();
-    if (conv.isNotEmpty) return conv.first.color;
-    return AppColors.teal;
+  String get _conversationTitle => _conversation?.name ?? 'المحادثة';
+
+  Color get _conversationColor => _conversation?.color ?? AppColors.teal;
+
+  String get _initialLetter {
+    final t = _conversationTitle.trim();
+    if (t.isEmpty) return 'S';
+    return t.characters.first;
+  }
+
+  void _openStoreProfile() {
+    context.pushNamed('store', pathParameters: {'id': _storeId});
+  }
+
+  void _safeBack() {
+    final router = GoRouter.of(context);
+    if (router.canPop()) {
+      router.pop();
+      return;
+    }
+    // fallback آمن
+    MainShellTabs.goHome();
+    context.go('/app');
   }
 
   void _sendMessage() {
@@ -50,6 +73,15 @@ class _ChatScreenState extends State<ChatScreen> {
       _messages.insert(0, _Message(text: text, isMe: true, timeLabel: 'الآن'));
     });
     _controller.clear();
+
+    // لطيف: خليها تظل على آخر رسالة (reverse:true يعني offset 0)
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOut,
+      );
+    }
   }
 
   @override
@@ -62,38 +94,60 @@ class _ChatScreenState extends State<ChatScreen> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         appBar: AppBar(
-          titleSpacing: 0,
-          title: Row(
-            children: [
-              Container(
-                width: h * 0.042,
-                height: h * 0.042,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: _conversationColor.withOpacity(0.18),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  _conversationTitle.characters.first,
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: _conversationColor,
-                  ),
-                ),
-              ),
-              SizedBox(width: w * 0.02),
-              Expanded(
-                child: Text(
-                  _conversationTitle,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new),
+            onPressed: _safeBack,
           ),
+          titleSpacing: 0,
+          title: InkWell(
+            onTap: _openStoreProfile, // ✅ ضغط على العنوان يفتح المتجر
+            borderRadius: BorderRadius.circular(h * 0.014),
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: h * 0.006),
+              child: Row(
+                children: [
+                  GestureDetector(
+                    onTap: _openStoreProfile, // ✅ ضغط على الصورة يفتح المتجر
+                    child: Container(
+                      width: h * 0.042,
+                      height: h * 0.042,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: _conversationColor.withOpacity(0.18),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        _initialLetter,
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: _conversationColor,
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: w * 0.02),
+                  Expanded(
+                    child: Text(
+                      _conversationTitle,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            IconButton(
+              tooltip: 'صفحة المتجر',
+              icon: const Icon(Icons.storefront_outlined),
+              onPressed: _openStoreProfile,
+            ),
+            SizedBox(width: w * 0.01),
+          ],
         ),
         body: Column(
           children: [
@@ -238,9 +292,9 @@ class _MessageBubble extends StatelessWidget {
                 topRight: Radius.circular(h * 0.018),
                 bottomLeft: isMe
                     ? Radius.circular(h * 0.018)
-                    : Radius.circular(4),
+                    : const Radius.circular(4),
                 bottomRight: isMe
-                    ? Radius.circular(4)
+                    ? const Radius.circular(4)
                     : Radius.circular(h * 0.018),
               ),
               boxShadow: [

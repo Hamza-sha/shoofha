@@ -2,97 +2,279 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:shoofha/core/responsive/responsive.dart';
+import 'package:shoofha/core/theme/app_colors.dart';
+import 'package:shoofha/features/main_shell/presentation/main_shell.dart';
 
-class FavoritesScreen extends StatelessWidget {
+class FavoritesScreen extends StatefulWidget {
   const FavoritesScreen({super.key});
+
+  @override
+  State<FavoritesScreen> createState() => _FavoritesScreenState();
+}
+
+class _FavoritesScreenState extends State<FavoritesScreen>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+  String _query = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  void _safeBack(BuildContext context) {
+    final router = GoRouter.of(context);
+    if (router.canPop()) {
+      router.pop();
+      return;
+    }
+    MainShellTabs.goProfile();
+    context.go('/app');
+  }
+
+  void _goExplore(BuildContext context) {
+    MainShellTabs.goExplore();
+    context.go('/app');
+  }
 
   @override
   Widget build(BuildContext context) {
     final w = Responsive.width(context);
     final h = Responsive.height(context);
-    final _ = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
 
     final favOffers = _dummyOffers;
     final favProducts = _dummyProducts;
     final favStores = _dummyStores;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('المفضلة')),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.symmetric(
-          horizontal: w * 0.04,
-          vertical: h * 0.015,
+    bool matches(String text) {
+      final q = _query.trim().toLowerCase();
+      if (q.isEmpty) return true;
+      return text.toLowerCase().contains(q);
+    }
+
+    final filteredOffers = favOffers.where((o) {
+      return matches(o.title) || matches(o.storeName) || matches(o.badge);
+    }).toList();
+
+    final filteredProducts = favProducts.where((p) {
+      return matches(p.name) || matches(p.price.toString());
+    }).toList();
+
+    final filteredStores = favStores.where((s) {
+      return matches(s.name) || matches(s.category);
+    }).toList();
+
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: theme.scaffoldBackgroundColor,
+        body: SafeArea(
+          child: Column(
+            children: [
+              _FavoritesHeader(
+                title: 'المفضلة',
+                subtitle: 'كل الأشياء اللي حبيتها… بمكان واحد ❤️',
+                onBack: () => _safeBack(context),
+              ),
+
+              Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: w * 0.06,
+                  vertical: h * 0.014,
+                ),
+                child: _SearchBar(
+                  hintText: 'ابحث في المفضلة...',
+                  onChanged: (v) => setState(() => _query = v),
+                ),
+              ),
+
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: w * 0.06),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: theme.cardColor,
+                    borderRadius: BorderRadius.circular(h * 0.020),
+                    border: Border.all(color: cs.outline.withOpacity(0.18)),
+                  ),
+                  child: TabBar(
+                    controller: _tabController,
+                    dividerColor: Colors.transparent,
+                    indicatorSize: TabBarIndicatorSize.tab,
+                    indicator: BoxDecoration(
+                      color: cs.secondary.withOpacity(0.14),
+                      borderRadius: BorderRadius.circular(h * 0.018),
+                    ),
+                    labelStyle: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                    unselectedLabelStyle: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                    tabs: const [
+                      Tab(text: 'العروض'),
+                      Tab(text: 'المنتجات'),
+                      Tab(text: 'المتاجر'),
+                    ],
+                  ),
+                ),
+              ),
+
+              SizedBox(height: h * 0.012),
+
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    // ===== Offers (✅ Grid مربعات) =====
+                    Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: w * 0.06,
+                        vertical: h * 0.010,
+                      ),
+                      child: filteredOffers.isEmpty
+                          ? _EmptyState(
+                              title: _query.trim().isEmpty
+                                  ? 'ما حفظت أي عروض لسا 😌'
+                                  : 'ما لقينا عروض',
+                              subtitle: _query.trim().isEmpty
+                                  ? 'لما تحفظ عرض رح تلاقيه هون فوراً.'
+                                  : 'جرّب كلمة ثانية أو امسح البحث.',
+                              ctaText: 'استكشف العروض',
+                              onCta: () => _goExplore(context),
+                            )
+                          : _OffersGrid(offers: filteredOffers),
+                    ),
+
+                    // ===== Products =====
+                    Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: w * 0.06,
+                        vertical: h * 0.010,
+                      ),
+                      child: filteredProducts.isEmpty
+                          ? _EmptyState(
+                              title: _query.trim().isEmpty
+                                  ? 'ما عندك منتجات محفوظة'
+                                  : 'ما لقينا منتجات',
+                              subtitle: _query.trim().isEmpty
+                                  ? 'احفظ منتجاتك المفضلة عشان ترجع إلها بسرعة.'
+                                  : 'جرّب كلمة ثانية أو امسح البحث.',
+                              ctaText: 'استكشف المنتجات',
+                              onCta: () => _goExplore(context),
+                            )
+                          : _ProductsGrid(products: filteredProducts),
+                    ),
+
+                    // ===== Stores =====
+                    Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: w * 0.06,
+                        vertical: h * 0.010,
+                      ),
+                      child: filteredStores.isEmpty
+                          ? _EmptyState(
+                              title: _query.trim().isEmpty
+                                  ? 'ما بتتابع متاجر حالياً'
+                                  : 'ما لقينا متاجر',
+                              subtitle: _query.trim().isEmpty
+                                  ? 'تابع متاجر لتحصل على عروضهم أول بأول.'
+                                  : 'جرّب كلمة ثانية أو امسح البحث.',
+                              ctaText: 'استكشف المتاجر',
+                              onCta: () => _goExplore(context),
+                            )
+                          : ListView.separated(
+                              itemCount: filteredStores.length,
+                              separatorBuilder: (_, __) =>
+                                  SizedBox(height: h * 0.012),
+                              itemBuilder: (context, index) {
+                                final store = filteredStores[index];
+                                return _StoreTile(store: store);
+                              },
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+}
+
+class _FavoritesHeader extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final VoidCallback onBack;
+
+  const _FavoritesHeader({
+    required this.title,
+    required this.subtitle,
+    required this.onBack,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final size = MediaQuery.sizeOf(context);
+    final w = size.width;
+    final h = size.height;
+
+    final headerHeight = h * 0.18;
+
+    return Container(
+      height: headerHeight,
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [AppColors.navy, AppColors.purple],
+          begin: Alignment.topRight,
+          end: Alignment.bottomLeft,
+        ),
+      ),
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: w * 0.06, vertical: h * 0.02),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // عروض
-            Text(
-              'عروض محفوظة',
-              style: TextStyle(fontSize: w * 0.04, fontWeight: FontWeight.w700),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _BackButton(onPressed: onBack),
+                Icon(
+                  Icons.favorite_rounded,
+                  color: Colors.white.withOpacity(0.92),
+                  size: h * 0.032,
+                ),
+              ],
             ),
-            SizedBox(height: h * 0.01),
-            favOffers.isEmpty
-                ? _EmptySection(text: 'ما حفظت أي عروض لسا 😌')
-                : SizedBox(
-                    height: h * 0.22,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: favOffers.length,
-                      separatorBuilder: (_, __) => SizedBox(width: w * 0.03),
-                      itemBuilder: (context, index) {
-                        final offer = favOffers[index];
-                        return _OfferCard(offer: offer);
-                      },
-                    ),
-                  ),
-
-            SizedBox(height: h * 0.025),
-
-            // منتجات
+            const Spacer(),
             Text(
-              'منتجات محفوظة',
-              style: TextStyle(fontSize: w * 0.04, fontWeight: FontWeight.w700),
+              title,
+              style: theme.textTheme.titleLarge?.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+                fontSize: h * 0.030,
+              ),
             ),
-            SizedBox(height: h * 0.01),
-            favProducts.isEmpty
-                ? _EmptySection(
-                    text: 'إضف منتجات للسلة أو المفضلة لتظهر هنا 🛒',
-                  )
-                : GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: favProducts.length,
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: Responsive.isMobile(context) ? 2 : 3,
-                      mainAxisSpacing: h * 0.014,
-                      crossAxisSpacing: w * 0.03,
-                      childAspectRatio: 0.72,
-                    ),
-                    itemBuilder: (context, index) {
-                      final product = favProducts[index];
-                      return _ProductCard(product: product);
-                    },
-                  ),
-
-            SizedBox(height: h * 0.025),
-
-            // متاجر
+            SizedBox(height: h * 0.006),
             Text(
-              'متاجر تتابعها',
-              style: TextStyle(fontSize: w * 0.04, fontWeight: FontWeight.w700),
+              subtitle,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: Colors.white.withOpacity(0.86),
+                height: 1.35,
+              ),
             ),
-            SizedBox(height: h * 0.01),
-            favStores.isEmpty
-                ? _EmptySection(text: 'تابع متاجر ليظهروا هون 🏪')
-                : Column(
-                    children: favStores.map((store) {
-                      return Padding(
-                        padding: EdgeInsets.only(bottom: h * 0.012),
-                        child: _StoreTile(store: store),
-                      );
-                    }).toList(),
-                  ),
           ],
         ),
       ),
@@ -100,30 +282,153 @@ class FavoritesScreen extends StatelessWidget {
   }
 }
 
-class _EmptySection extends StatelessWidget {
-  final String text;
+class _BackButton extends StatelessWidget {
+  final VoidCallback onPressed;
 
-  const _EmptySection({required this.text});
+  const _BackButton({required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    final h = MediaQuery.sizeOf(context).height;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(.15),
+        borderRadius: BorderRadius.circular(h * 0.014),
+      ),
+      child: IconButton(
+        icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+        onPressed: onPressed,
+      ),
+    );
+  }
+}
+
+class _SearchBar extends StatelessWidget {
+  final String hintText;
+  final ValueChanged<String> onChanged;
+
+  const _SearchBar({required this.hintText, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
     final w = Responsive.width(context);
-    final cs = Theme.of(context).colorScheme;
+    final h = Responsive.height(context);
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
 
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: w * 0.02),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: w * 0.035,
-          color: cs.onSurface.withOpacity(0.7),
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: w * 0.03, vertical: h * 0.006),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(h * 0.02),
+        border: Border.all(color: cs.outline.withOpacity(0.22)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(
+              theme.brightness == Brightness.light ? 0.03 : 0.18,
+            ),
+            blurRadius: h * 0.014,
+            offset: Offset(0, h * 0.006),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.search, color: theme.hintColor),
+          SizedBox(width: w * 0.02),
+          Expanded(
+            child: TextField(
+              onChanged: onChanged,
+              textInputAction: TextInputAction.search,
+              decoration: InputDecoration(
+                hintText: hintText,
+                border: InputBorder.none,
+                isDense: true,
+              ),
+            ),
+          ),
+          SizedBox(width: w * 0.01),
+          Icon(Icons.tune_rounded, color: theme.hintColor),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyState extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final String ctaText;
+  final VoidCallback onCta;
+
+  const _EmptyState({
+    required this.title,
+    required this.subtitle,
+    required this.ctaText,
+    required this.onCta,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final h = Responsive.height(context);
+    final w = Responsive.width(context);
+    final theme = Theme.of(context);
+
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: w * 0.10),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: h * 0.18,
+              height: h * 0.18,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [AppColors.teal, AppColors.purple],
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
+                ),
+              ),
+              child: Icon(
+                Icons.favorite_border_rounded,
+                color: Colors.white,
+                size: h * 0.08,
+              ),
+            ),
+            SizedBox(height: h * 0.02),
+            Text(
+              title,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: h * 0.008),
+            Text(
+              subtitle,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+                height: 1.5,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: h * 0.022),
+            SizedBox(
+              width: w * 0.62,
+              height: h * 0.055,
+              child: FilledButton(onPressed: onCta, child: Text(ctaText)),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-// عروض
+// ======================= Offers (✅ Grid مربعات) =======================
 
 class _FavoriteOffer {
   final String id;
@@ -143,105 +448,189 @@ class _FavoriteOffer {
   });
 }
 
-class _OfferCard extends StatelessWidget {
-  final _FavoriteOffer offer;
+class _OffersGrid extends StatelessWidget {
+  final List<_FavoriteOffer> offers;
 
-  const _OfferCard({required this.offer});
+  const _OffersGrid({required this.offers});
+
+  int _columnsForWidth(double w) {
+    if (w >= 1200) return 4;
+    if (w >= 900) return 3;
+    return 2;
+  }
 
   @override
   Widget build(BuildContext context) {
     final w = Responsive.width(context);
     final h = Responsive.height(context);
 
-    return GestureDetector(
+    final cols = _columnsForWidth(w);
+
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: offers.length,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: cols,
+        mainAxisSpacing: h * 0.014,
+        crossAxisSpacing: w * 0.03,
+        childAspectRatio: 1, // ✅ مربعات
+      ),
+      itemBuilder: (context, index) {
+        final offer = offers[index];
+        return _OfferSquareCard(offer: offer);
+      },
+    );
+  }
+}
+
+class _OfferSquareCard extends StatelessWidget {
+  final _FavoriteOffer offer;
+
+  const _OfferSquareCard({required this.offer});
+
+  @override
+  Widget build(BuildContext context) {
+    final w = Responsive.width(context);
+    final theme = Theme.of(context);
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
       onTap: () {
         context.pushNamed('store', pathParameters: {'id': offer.storeId});
       },
-      child: Container(
-        width: w * 0.6,
+      child: Ink(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(16),
           gradient: LinearGradient(
             colors: [
-              offer.color.withOpacity(0.9),
-              offer.color.withOpacity(0.65),
+              offer.color.withOpacity(0.90),
+              offer.color.withOpacity(0.55),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(
+                theme.brightness == Brightness.light ? 0.06 : 0.22,
+              ),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
-        clipBehavior: Clip.antiAlias,
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.bottomCenter,
-                    end: Alignment.topCenter,
-                    colors: [
-                      Colors.black.withOpacity(0.6),
-                      Colors.black.withOpacity(0.1),
-                    ],
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.bottomCenter,
+                      end: Alignment.topCenter,
+                      colors: [
+                        Colors.black.withOpacity(0.62),
+                        Colors.black.withOpacity(0.08),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-            Padding(
-              padding: EdgeInsets.all(w * 0.03),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: w * 0.02,
-                      vertical: w * 0.008,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.6),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      offer.badge,
-                      style: TextStyle(
-                        fontSize: w * 0.032,
+
+              // play icon
+              Center(
+                child: Container(
+                  padding: EdgeInsets.all(w * 0.020),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.25),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white.withOpacity(0.22)),
+                  ),
+                  child: Icon(
+                    Icons.play_arrow_rounded,
+                    size: w * 0.085,
+                    color: Colors.white.withOpacity(0.95),
+                  ),
+                ),
+              ),
+
+              // badge
+              Positioned(
+                top: w * 0.025,
+                left: w * 0.025,
+                child: _MiniBadge(text: offer.badge),
+              ),
+
+              // bottom text
+              Positioned(
+                right: w * 0.03,
+                left: w * 0.03,
+                bottom: w * 0.03,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      offer.storeName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyMedium?.copyWith(
                         color: Colors.white,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
-                  ),
-                  const Spacer(),
-                  Text(
-                    offer.storeName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: w * 0.04,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
+                    SizedBox(height: w * 0.010),
+                    Text(
+                      offer.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: Colors.white.withOpacity(0.90),
+                        height: 1.25,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-                  SizedBox(height: h * 0.004),
-                  Text(
-                    offer.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: w * 0.033,
-                      color: Colors.white.withOpacity(0.9),
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-// منتجات
+class _MiniBadge extends StatelessWidget {
+  final String text;
+
+  const _MiniBadge({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    final w = Responsive.width(context);
+
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: w * 0.022, vertical: w * 0.010),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.40),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white.withOpacity(0.16)),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: Colors.white.withOpacity(0.95),
+          fontWeight: FontWeight.w800,
+          fontSize: w * 0.030,
+        ),
+      ),
+    );
+  }
+}
+
+// ======================= Products =======================
 
 class _FavoriteProduct {
   final String id;
@@ -257,6 +646,43 @@ class _FavoriteProduct {
     required this.color,
     required this.productId,
   });
+}
+
+class _ProductsGrid extends StatelessWidget {
+  final List<_FavoriteProduct> products;
+
+  const _ProductsGrid({required this.products});
+
+  @override
+  Widget build(BuildContext context) {
+    final w = Responsive.width(context);
+    final h = Responsive.height(context);
+
+    int crossAxisCount;
+    if (w >= 1200) {
+      crossAxisCount = 4;
+    } else if (w >= 900) {
+      crossAxisCount = 3;
+    } else {
+      crossAxisCount = 2;
+    }
+
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: products.length,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
+        mainAxisSpacing: h * 0.014,
+        crossAxisSpacing: w * 0.03,
+        childAspectRatio: 0.78,
+      ),
+      itemBuilder: (context, index) {
+        final product = products[index];
+        return _ProductCard(product: product);
+      },
+    );
+  }
 }
 
 class _ProductCard extends StatelessWidget {
@@ -307,7 +733,7 @@ class _ProductCard extends StatelessWidget {
               ),
               child: Center(
                 child: Text(
-                  product.name.characters.first,
+                  product.name.isNotEmpty ? product.name.characters.first : '?',
                   style: TextStyle(
                     fontSize: w * 0.06,
                     fontWeight: FontWeight.bold,
@@ -330,7 +756,7 @@ class _ProductCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: w * 0.038,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                   SizedBox(height: h * 0.004),
@@ -338,7 +764,7 @@ class _ProductCard extends StatelessWidget {
                     '${product.price.toStringAsFixed(2)} د.أ',
                     style: TextStyle(
                       fontSize: w * 0.034,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w800,
                       color: cs.primary,
                     ),
                   ),
@@ -352,7 +778,7 @@ class _ProductCard extends StatelessWidget {
   }
 }
 
-// متاجر
+// ======================= Stores =======================
 
 class _FavoriteStore {
   final String id;
@@ -401,7 +827,7 @@ class _StoreTile extends StatelessWidget {
             CircleAvatar(
               radius: w * 0.055,
               child: Text(
-                store.name.characters.first,
+                store.name.isNotEmpty ? store.name.characters.first : '?',
                 style: TextStyle(
                   fontSize: w * 0.05,
                   fontWeight: FontWeight.bold,
@@ -417,7 +843,7 @@ class _StoreTile extends StatelessWidget {
                     store.name,
                     style: TextStyle(
                       fontSize: w * 0.038,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                   SizedBox(height: w * 0.005),
@@ -455,7 +881,7 @@ class _StoreTile extends StatelessWidget {
   }
 }
 
-// Dummy data
+// ======================= Dummy data =======================
 
 final List<_FavoriteOffer> _dummyOffers = [
   _FavoriteOffer(
