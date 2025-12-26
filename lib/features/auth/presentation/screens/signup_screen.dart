@@ -29,13 +29,51 @@ class _SignupScreenState extends State<SignupScreen> {
   final _passwordController = TextEditingController();
   final _confirmController = TextEditingController();
 
-  // ✅ NEW: errors
+  // ✅ errors
   String? _nameError;
   String? _emailError;
   String? _phoneError;
   String? _passwordError;
   String? _confirmError;
   String? _termsError;
+
+  // ✅ Live: نخلي الزر ما يشتغل إلا إذا كل شي valid
+  bool get _canSubmit {
+    final name = _nameController.text.trim();
+    final email = _emailController.text.trim();
+    final phone = _phoneController.text.trim();
+    final pass = _passwordController.text.trim();
+    final confirm = _confirmController.text.trim();
+
+    final nameOk = name.length >= 2;
+    final passOk = pass.length >= 6;
+    final confirmOk = confirm.isNotEmpty && confirm == pass;
+
+    final emailOk = !_useEmail ? true : _isValidEmail(email);
+    final phoneOk = _useEmail
+        ? (phone.isEmpty ? true : _isValidPhone(phone)) // optional
+        : _isValidPhone(phone);
+
+    return !_loading &&
+        _agreeTerms &&
+        nameOk &&
+        emailOk &&
+        phoneOk &&
+        passOk &&
+        confirmOk;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    // ✅ Live validation listeners
+    _nameController.addListener(_liveValidateName);
+    _emailController.addListener(_liveValidateEmail);
+    _phoneController.addListener(_liveValidatePhone);
+    _passwordController.addListener(_liveValidatePasswordAndConfirm);
+    _confirmController.addListener(_liveValidateConfirmOnly);
+  }
 
   @override
   void dispose() {
@@ -65,7 +103,109 @@ class _SignupScreenState extends State<SignupScreen> {
     return digits.length >= 8;
   }
 
-  bool _validate() {
+  // --------------------
+  // ✅ Live Validation helpers
+  // --------------------
+
+  void _liveValidateName() {
+    final name = _nameController.text.trim();
+    final err = (name.isEmpty)
+        ? null
+        : (name.length < 2 ? 'الاسم لازم يكون حرفين على الأقل' : null);
+
+    if (err != _nameError && mounted) {
+      setState(() => _nameError = err);
+    }
+  }
+
+  void _liveValidateEmail() {
+    if (!_useEmail) return;
+
+    final email = _emailController.text.trim();
+    final err = (email.isEmpty)
+        ? null
+        : (_isValidEmail(email) ? null : 'Email غير صحيح');
+
+    if (err != _emailError && mounted) {
+      setState(() => _emailError = err);
+    }
+  }
+
+  void _liveValidatePhone() {
+    final phone = _phoneController.text.trim();
+
+    if (_useEmail) {
+      // optional
+      final err = (phone.isEmpty)
+          ? null
+          : (_isValidPhone(phone) ? null : 'رقم الهاتف غير صحيح');
+      if (err != _phoneError && mounted) {
+        setState(() => _phoneError = err);
+      }
+    } else {
+      // required
+      final err = (phone.isEmpty)
+          ? null
+          : (_isValidPhone(phone) ? null : 'رقم الهاتف غير صحيح');
+      if (err != _phoneError && mounted) {
+        setState(() => _phoneError = err);
+      }
+    }
+  }
+
+  void _liveValidatePasswordAndConfirm() {
+    final pass = _passwordController.text.trim();
+    final confirm = _confirmController.text.trim();
+
+    final passErr = (pass.isEmpty)
+        ? null
+        : (pass.length < 6 ? 'Password لازم يكون 6 خانات أو أكثر' : null);
+
+    // ✅ لما تتغير كلمة السر لازم نعيد فحص confirm فوراً
+    final confirmErr = (confirm.isEmpty)
+        ? null
+        : (confirm == pass ? null : 'كلمات السر غير متطابقة');
+
+    if (mounted) {
+      if (passErr != _passwordError || confirmErr != _confirmError) {
+        setState(() {
+          _passwordError = passErr;
+          _confirmError = confirmErr;
+        });
+      } else {
+        // حتى الزر يتحدّث بشكل فوري بدون تغيير errors
+        setState(() {});
+      }
+    }
+  }
+
+  void _liveValidateConfirmOnly() {
+    final pass = _passwordController.text.trim();
+    final confirm = _confirmController.text.trim();
+
+    final confirmErr = (confirm.isEmpty)
+        ? null
+        : (confirm == pass ? null : 'كلمات السر غير متطابقة');
+
+    if (confirmErr != _confirmError && mounted) {
+      setState(() => _confirmError = confirmErr);
+    } else {
+      // لتحديث _canSubmit
+      if (mounted) setState(() {});
+    }
+  }
+
+  void _liveValidateTerms() {
+    final err = _agreeTerms ? null : 'لازم توافق على الشروط والأحكام';
+    if (err != _termsError && mounted) {
+      setState(() => _termsError = err);
+    } else {
+      if (mounted) setState(() {});
+    }
+  }
+
+  // ✅ Final validation قبل الإرسال (بس يكون Live already)
+  bool _validateAll() {
     final name = _nameController.text.trim();
     final email = _emailController.text.trim();
     final phone = _phoneController.text.trim();
@@ -87,7 +227,6 @@ class _SignupScreenState extends State<SignupScreen> {
       if (!_isValidEmail(email)) {
         emailErr = 'Email غير صحيح';
       }
-      // phone optional هنا، بس لو المستخدم كتبه نفحصه
       if (phone.isNotEmpty && !_isValidPhone(phone)) {
         phoneErr = 'رقم الهاتف غير صحيح';
       }
@@ -133,14 +272,15 @@ class _SignupScreenState extends State<SignupScreen> {
   Future<void> _onSignup() async {
     if (_loading) return;
 
-    if (!_validate()) {
+    // ✅ منع الإرسال إذا مش valid
+    if (!_validateAll()) {
       if (!mounted) return;
       if (_termsError != null) {
         ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(_termsError!),
-            duration: const Duration(milliseconds: 1400),
+            duration: const Duration(milliseconds: 1200),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -170,9 +310,9 @@ class _SignupScreenState extends State<SignupScreen> {
 
       ScaffoldMessenger.of(context).clearSnackBars();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('تعذر إنشاء الحساب. حاول مرة ثانية.'),
-          duration: const Duration(milliseconds: 1400),
+        const SnackBar(
+          content: Text('تعذر إنشاء الحساب. حاول مرة ثانية.'),
+          duration: Duration(milliseconds: 1200),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -254,6 +394,8 @@ class _SignupScreenState extends State<SignupScreen> {
                                     _emailError = null;
                                     _phoneError = null;
                                   });
+                                  _liveValidateEmail();
+                                  _liveValidatePhone();
                                 }
                               },
                               child: _SignupTab(
@@ -272,6 +414,8 @@ class _SignupScreenState extends State<SignupScreen> {
                                     _emailError = null;
                                     _phoneError = null;
                                   });
+                                  _liveValidateEmail();
+                                  _liveValidatePhone();
                                 }
                               },
                               child: _SignupTab(
@@ -294,10 +438,7 @@ class _SignupScreenState extends State<SignupScreen> {
                       prefixIcon: Icons.person_outline,
                       controller: _nameController,
                       errorText: _nameError,
-                      onChanged: (_) {
-                        if (_nameError != null)
-                          setState(() => _nameError = null);
-                      },
+                      textInputAction: TextInputAction.next,
                     ),
                     SizedBox(height: vSpaceMd),
 
@@ -309,10 +450,7 @@ class _SignupScreenState extends State<SignupScreen> {
                         keyboardType: TextInputType.emailAddress,
                         controller: _emailController,
                         errorText: _emailError,
-                        onChanged: (_) {
-                          if (_emailError != null)
-                            setState(() => _emailError = null);
-                        },
+                        textInputAction: TextInputAction.next,
                       ),
                       SizedBox(height: vSpaceMd),
                       AuthTextField(
@@ -322,10 +460,7 @@ class _SignupScreenState extends State<SignupScreen> {
                         keyboardType: TextInputType.phone,
                         controller: _phoneController,
                         errorText: _phoneError,
-                        onChanged: (_) {
-                          if (_phoneError != null)
-                            setState(() => _phoneError = null);
-                        },
+                        textInputAction: TextInputAction.next,
                       ),
                     ] else ...[
                       AuthTextField(
@@ -335,10 +470,7 @@ class _SignupScreenState extends State<SignupScreen> {
                         keyboardType: TextInputType.phone,
                         controller: _phoneController,
                         errorText: _phoneError,
-                        onChanged: (_) {
-                          if (_phoneError != null)
-                            setState(() => _phoneError = null);
-                        },
+                        textInputAction: TextInputAction.next,
                       ),
                     ],
 
@@ -352,14 +484,10 @@ class _SignupScreenState extends State<SignupScreen> {
                       controller: _passwordController,
                       obscure: _obscurePassword,
                       errorText: _passwordError,
-                      onChanged: (_) {
-                        if (_passwordError != null) {
-                          setState(() => _passwordError = null);
-                        }
-                      },
                       onToggleObscure: () {
                         setState(() => _obscurePassword = !_obscurePassword);
                       },
+                      textInputAction: TextInputAction.next,
                     ),
                     SizedBox(height: vSpaceMd),
 
@@ -371,11 +499,6 @@ class _SignupScreenState extends State<SignupScreen> {
                       controller: _confirmController,
                       obscure: _obscureConfirm,
                       errorText: _confirmError,
-                      onChanged: (_) {
-                        if (_confirmError != null) {
-                          setState(() => _confirmError = null);
-                        }
-                      },
                       onToggleObscure: () {
                         setState(() => _obscureConfirm = !_obscureConfirm);
                       },
@@ -393,10 +516,12 @@ class _SignupScreenState extends State<SignupScreen> {
                           width: width * 0.1,
                           child: Checkbox(
                             value: _agreeTerms,
-                            onChanged: (v) => setState(() {
-                              _agreeTerms = v ?? false;
-                              _termsError = null;
-                            }),
+                            onChanged: (v) {
+                              setState(() {
+                                _agreeTerms = v ?? false;
+                              });
+                              _liveValidateTerms();
+                            },
                           ),
                         ),
                         Expanded(
@@ -449,22 +574,42 @@ class _SignupScreenState extends State<SignupScreen> {
 
                     SizedBox(height: vSpaceMd),
 
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _loading
-                              ? SizedBox(
-                                  height: height * 0.065,
-                                  child: const Center(
-                                    child: CircularProgressIndicator(),
-                                  ),
-                                )
-                              : AuthPrimaryButton(
-                                  label: 'Create account',
-                                  onPressed: _onSignup,
-                                ),
-                        ),
-                      ],
+                    // ✅ CTA Disabled if invalid + loading safe
+                    _loading
+                        ? SizedBox(
+                            height: height * 0.065,
+                            child: const Center(
+                              child: CircularProgressIndicator(),
+                            ),
+                          )
+                        : AuthPrimaryButton(
+                            label: 'Create account',
+                            onPressed: _onSignup,
+                            enabled: _canSubmit, // ✅
+                          ),
+
+                    SizedBox(height: height * 0.03),
+
+                    Center(
+                      child: Wrap(
+                        alignment: WrapAlignment.center,
+                        children: [
+                          Text(
+                            'Already have an account? ',
+                            style: theme.textTheme.bodyMedium,
+                          ),
+                          GestureDetector(
+                            onTap: () => context.go('/login'),
+                            child: Text(
+                              'Log in',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: colorScheme.secondary,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
 
                     SizedBox(height: height * 0.03),

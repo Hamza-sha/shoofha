@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:shoofha/core/responsive/responsive.dart';
 import 'package:shoofha/features/cart/application/cart_controller.dart';
+import 'package:shoofha/features/main_shell/presentation/main_shell.dart';
 import 'package:shoofha/features/store/domain/store_models.dart';
 import 'package:shoofha/features/commerce/presentation/screens/order_success_screen.dart';
 
@@ -21,13 +22,28 @@ class CheckoutScreen extends ConsumerStatefulWidget {
 class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   bool _submitting = false;
 
-  // ✅ جديد: طريقة الاستلام + الدفع
   DeliveryMethod _deliveryMethod = DeliveryMethod.delivery;
   PaymentMethod _paymentMethod = PaymentMethod.cashOnDelivery;
+
+  // ✅ Undo Queue (ذكي + آمن)
+  final List<_UndoRemoval> _undoQueue = <_UndoRemoval>[];
+  bool _snackShowing = false;
 
   String _generateOrderId() {
     final ms = DateTime.now().millisecondsSinceEpoch;
     return 'SH-$ms';
+  }
+
+  void _safeBack(BuildContext context) {
+    final router = GoRouter.of(context);
+    if (router.canPop()) {
+      router.pop();
+      return;
+    }
+
+    // ✅ fallback آمن
+    MainShellTabs.goCart();
+    context.go('/app');
   }
 
   void _placeOrder(BuildContext context) {
@@ -41,14 +57,95 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     final orderId = _generateOrderId();
     final total = cartState.total;
 
-    // ✅ امسح السلة
     ref.read(cartControllerProvider.notifier).clear();
 
-    // ✅ روح على نجاح الطلب
     context.goNamed(
       'order-success',
       extra: OrderSuccessArgs(orderId: orderId, total: total),
     );
+  }
+
+  void _enqueueUndo({
+    required ScaffoldMessengerState messenger,
+    required _UndoRemoval removal,
+  }) {
+    _undoQueue.add(removal);
+    _showNextUndoIfNeeded(messenger);
+  }
+
+  void _showNextUndoIfNeeded(ScaffoldMessengerState messenger) {
+    if (_snackShowing) return;
+    if (_undoQueue.isEmpty) return;
+    if (!mounted) return; // ✅ حماية إضافية
+
+    _snackShowing = true;
+
+    final current = _undoQueue.first;
+
+    // ما نمسح القديم: نعمل hide للحالي عشان يصير Queue مرتب
+    messenger.hideCurrentSnackBar();
+
+    messenger
+        .showSnackBar(
+          SnackBar(
+            content: Text('تم حذف ${current.productName}'),
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+            action: SnackBarAction(
+              label: 'تراجع',
+              onPressed: () {
+                current.undo();
+                current.didUndo = true; // ✅ الآن always initialized
+              },
+            ),
+          ),
+        )
+        .closed
+        .then((_) {
+          // ✅ لو انسكر السناك: نشيل العنصر ونعرض اللي بعده
+          if (_undoQueue.isNotEmpty && identical(_undoQueue.first, current)) {
+            _undoQueue.removeAt(0);
+          } else {
+            // احتياط لو صار اختلاف
+            _undoQueue.remove(current);
+          }
+
+          _snackShowing = false;
+
+          if (!mounted) return;
+
+          // ✅ (اختياري) لو بدك Feedback صغير بعد التراجع
+          // if (current.didUndo) {
+          //   messenger.showSnackBar(
+          //     const SnackBar(
+          //       content: Text('تم التراجع عن الحذف'),
+          //       duration: Duration(milliseconds: 900),
+          //       behavior: SnackBarBehavior.floating,
+          //     ),
+          //   );
+          // }
+
+          _showNextUndoIfNeeded(messenger);
+        });
+  }
+
+  void _removeItemWithUndo(BuildContext context, CartItem item) {
+    final cartNotifier = ref.read(cartControllerProvider.notifier);
+    final messenger = ScaffoldMessenger.of(context);
+
+    // احذف
+    cartNotifier.removeItem(item.product.id);
+
+    // جهّز undo entry (بدون ref داخل SnackBar)
+    final removal = _UndoRemoval(
+      productName: item.product.name,
+      undo: () {
+        cartNotifier.addItem(item.product, quantity: item.quantity);
+      },
+      // didUndo: false // ✅ مش ضروري لأنه صار default
+    );
+
+    _enqueueUndo(messenger: messenger, removal: removal);
   }
 
   @override
@@ -69,7 +166,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
           centerTitle: true,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_ios_new),
-            onPressed: () => context.pop(),
+            onPressed: () => _safeBack(context),
           ),
         ),
 
@@ -92,7 +189,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                       SizedBox(
                         width: double.infinity,
                         child: OutlinedButton(
-                          onPressed: () => context.pop(),
+                          onPressed: () => _safeBack(context),
                           child: const Text('الرجوع للسلة'),
                         ),
                       ),
@@ -108,7 +205,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    /// ===== Delivery Method (NEW) =====
+                    /// ===== Delivery Method =====
                     Text(
                       'طريقة الاستلام',
                       style: theme.textTheme.titleMedium?.copyWith(
@@ -157,7 +254,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
                     SizedBox(height: h * 0.025),
 
-                    /// ===== Address (keep same design, but conditional) =====
+                    /// ===== Address =====
                     Text(
                       _deliveryMethod == DeliveryMethod.delivery
                           ? 'عنوان التوصيل'
@@ -199,7 +296,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                             ),
                             TextButton(
                               onPressed: () {
-                                // TODO: لاحقاً شاشة إدارة العناوين
+                                // TODO
                               },
                               child: const Text('تعديل'),
                             ),
@@ -269,13 +366,14 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                           product: item.product,
                           quantity: item.quantity,
                           storeName: store.name,
+                          onRemove: () => _removeItemWithUndo(context, item),
                         ),
                       );
                     }),
 
                     SizedBox(height: h * 0.02),
 
-                    /// ===== Payment (NEW but same card design style) =====
+                    /// ===== Payment =====
                     Text(
                       'طريقة الدفع',
                       style: theme.textTheme.titleMedium?.copyWith(
@@ -329,7 +427,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                 ),
               ),
 
-        /// ===== Bottom CTA (unchanged) =====
+        /// ===== Bottom CTA =====
         bottomNavigationBar: cartItems.isEmpty
             ? null
             : SafeArea(
@@ -409,6 +507,20 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   }
 }
 
+class _UndoRemoval {
+  final String productName;
+  final VoidCallback undo;
+
+  // ✅ FIX: لازم قيمة افتراضية لأنه non-nullable
+  bool didUndo;
+
+  _UndoRemoval({
+    required this.productName,
+    required this.undo,
+    this.didUndo = false, // ✅ أهم تعديل لحل الخطأ
+  });
+}
+
 /// ✅ نفس ستايلك، بس Widget صغير يساعدنا نعمل اختيار (Radio-like)
 class _ChoiceRow extends StatelessWidget {
   final IconData icon;
@@ -481,11 +593,13 @@ class _CheckoutItemTile extends StatelessWidget {
   final StoreProduct product;
   final int quantity;
   final String storeName;
+  final VoidCallback onRemove;
 
   const _CheckoutItemTile({
     required this.product,
     required this.quantity,
     required this.storeName,
+    required this.onRemove,
   });
 
   @override
@@ -534,13 +648,31 @@ class _CheckoutItemTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  product.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        product.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    InkWell(
+                      onTap: onRemove,
+                      borderRadius: BorderRadius.circular(10),
+                      child: Padding(
+                        padding: EdgeInsets.all(w * 0.015),
+                        child: Icon(
+                          Icons.delete_outline_rounded,
+                          size: w * 0.055,
+                          color: cs.error.withValues(alpha: 0.95),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 SizedBox(height: h * 0.003),
                 Text(

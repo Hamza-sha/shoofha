@@ -1,13 +1,120 @@
 import 'package:flutter/material.dart';
-import 'package:shoofha/app/theme/app_theme.dart';
+import 'package:shoofha/core/theme/app_colors.dart';
 
-class ExploreScreen extends StatelessWidget {
+enum ExploreFilter { all, near, topRated, newest, recommended }
+
+class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
+
+  @override
+  State<ExploreScreen> createState() => _ExploreScreenState();
+}
+
+class _ExploreScreenState extends State<ExploreScreen> {
+  final TextEditingController _searchController = TextEditingController();
+  ExploreFilter _selectedFilter = ExploreFilter.all;
+
+  String get _query => _searchController.text.trim().toLowerCase();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _openFiltersSheet() {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    final size = MediaQuery.sizeOf(context);
+    final w = size.width;
+    final h = size.height;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return Container(
+          padding: EdgeInsets.fromLTRB(
+            w * 0.06,
+            h * 0.015,
+            w * 0.06,
+            h * 0.02 + MediaQuery.of(context).viewPadding.bottom,
+          ),
+          decoration: BoxDecoration(
+            color: cs.surface,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(h * 0.03)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(
+                  theme.brightness == Brightness.light ? 0.08 : 0.55,
+                ),
+                blurRadius: h * 0.03,
+                offset: Offset(0, -h * 0.01),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: w * 0.12,
+                height: h * 0.006,
+                decoration: BoxDecoration(
+                  color: cs.onSurface.withOpacity(0.18),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+              SizedBox(height: h * 0.02),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'فلاتر',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+              SizedBox(height: h * 0.01),
+              Text(
+                'قريباً رح نخليها فلترة متقدمة (تصنيف، سعر، تقييم، مسافة).',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: cs.onSurface.withOpacity(0.7),
+                ),
+              ),
+              SizedBox(height: h * 0.02),
+              SizedBox(
+                width: double.infinity,
+                height: h * 0.06,
+                child: FilledButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text(
+                    'تمام',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: cs.onPrimary,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final cs = theme.colorScheme;
 
     final size = MediaQuery.sizeOf(context);
     final width = size.width;
@@ -19,136 +126,242 @@ class ExploreScreen extends StatelessWidget {
     final vSpaceMd = height * 0.026;
     final vSpaceLg = height * 0.034;
 
-    return Scaffold(
-      backgroundColor: colorScheme.surface,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // الهيدر: عنوان + بحث
-            Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: horizontalPadding,
-                vertical: height * 0.014,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'استكشاف',
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  SizedBox(height: vSpaceXs),
-                  Text(
-                    'اكتشف متاجر جديدة، تصنيفات، وريلز تشبه اهتماماتك.',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.textTheme.bodyMedium?.color?.withOpacity(
-                        0.7,
+    // ✅ Dummy Data (مخزون واحد نفلتر منه)
+    final collections = const [
+      _CollectionItem('موضة وأزياء', Icons.checkroom_outlined),
+      _CollectionItem('المطاعم والكافيهات', Icons.restaurant_menu),
+      _CollectionItem('الكترونيات وتقنية', Icons.devices_other),
+      _CollectionItem('الجمال والعناية', Icons.brush_outlined),
+    ];
+
+    final reels = const [
+      _ReelItem('Coffee Mood', 'خصم على المشروبات الباردة', AppColors.navy),
+      _ReelItem('FitZone Gym', 'اشتراك + شهر مجاناً', AppColors.purple),
+      _ReelItem('Tech Corner', 'عروض باور بانك وسماعات', AppColors.teal),
+      _ReelItem('Rose Home', 'ديكورات جديدة للبيت', Color(0xFFB23A48)),
+      _ReelItem('Gifts Box', 'هدايا جاهزة لكل مناسبة', Color(0xFF3D155F)),
+      _ReelItem('Burger Hub', 'برجر مع عرض مميز', Color(0xFFBF360C)),
+    ];
+
+    final stores = const [
+      _StoreItem('Coffee Mood', 'كافيه', 1.2, 4.7),
+      _StoreItem('FitZone Gym', 'نادي رياضي', 3.5, 4.5),
+      _StoreItem('Tech Corner', 'الكترونيات', 5.4, 4.3),
+      _StoreItem('Rose Home Decor', 'ديكور منزلي', 2.1, 4.8),
+    ];
+
+    // ✅ Apply Search
+    bool matchText(String value) {
+      if (_query.isEmpty) return true;
+      return value.toLowerCase().contains(_query);
+    }
+
+    var filteredCollections = collections
+        .where((c) => matchText(c.title))
+        .toList();
+    var filteredReels = reels
+        .where((r) => matchText(r.store) || matchText(r.title))
+        .toList();
+    var filteredStores = stores
+        .where((s) => matchText(s.name) || matchText(s.category))
+        .toList();
+
+    // ✅ Apply Filter (منطقي/تجريبي)
+    switch (_selectedFilter) {
+      case ExploreFilter.all:
+        break;
+      case ExploreFilter.near:
+        filteredStores = filteredStores
+          ..sort((a, b) => a.distanceKm.compareTo(b.distanceKm));
+        break;
+      case ExploreFilter.topRated:
+        filteredStores = filteredStores
+          ..sort((a, b) => b.rating.compareTo(a.rating));
+        break;
+      case ExploreFilter.newest:
+        // Dummy: خليناها تعكس ترتيب الريلز
+        filteredReels = filteredReels.reversed.toList();
+        break;
+      case ExploreFilter.recommended:
+        // Dummy: خليها تتجه للـ reels أكثر
+        if (filteredStores.length > 2) {
+          filteredStores = filteredStores.take(2).toList();
+        }
+        break;
+    }
+
+    final hasAnyResults =
+        filteredCollections.isNotEmpty ||
+        filteredReels.isNotEmpty ||
+        filteredStores.isNotEmpty;
+
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: cs.surface,
+        body: SafeArea(
+          child: Column(
+            children: [
+              // Header
+              Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: horizontalPadding,
+                  vertical: height * 0.014,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'استكشاف',
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                  ),
-                  SizedBox(height: vSpaceSm),
+                    SizedBox(height: vSpaceXs),
+                    Text(
+                      'اكتشف متاجر جديدة، تصنيفات، وريلز تشبه اهتماماتك.',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.textTheme.bodyMedium?.color?.withOpacity(
+                          0.7,
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: vSpaceSm),
 
-                  // حقل البحث
-                  _ExploreSearchBar(),
-                  SizedBox(height: vSpaceSm),
+                    _ExploreSearchBar(
+                      controller: _searchController,
+                      onChanged: (_) => setState(() {}),
+                      onClear: () {
+                        _searchController.clear();
+                        setState(() {});
+                      },
+                      onOpenFilters: _openFiltersSheet,
+                    ),
+                    SizedBox(height: vSpaceSm),
 
-                  // Chips للفلاتر
-                  const _ExploreFilterChips(),
-                ],
+                    _ExploreFilterChips(
+                      selected: _selectedFilter,
+                      onSelected: (f) => setState(() => _selectedFilter = f),
+                    ),
+                  ],
+                ),
               ),
-            ),
 
-            Expanded(
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(height: vSpaceSm),
+              Expanded(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 180),
+                    child: !hasAnyResults
+                        ? _EmptyExplore(query: _searchController.text.trim())
+                        : SingleChildScrollView(
+                            key: ValueKey(
+                              'content-$_query-${_selectedFilter.name}',
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                SizedBox(height: vSpaceSm),
 
-                      // سيكشن: Collections / Topics
-                      Text(
-                        'مجموعات مقترحة',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      SizedBox(height: vSpaceXs),
-                      SizedBox(
-                        height: height * 0.20,
-                        child: const _ExploreCollectionsList(),
-                      ),
+                                if (filteredCollections.isNotEmpty) ...[
+                                  Text(
+                                    'مجموعات مقترحة',
+                                    style: theme.textTheme.titleMedium
+                                        ?.copyWith(fontWeight: FontWeight.w700),
+                                  ),
+                                  SizedBox(height: vSpaceXs),
+                                  SizedBox(
+                                    height: height * 0.20,
+                                    child: _ExploreCollectionsList(
+                                      items: filteredCollections,
+                                    ),
+                                  ),
+                                  SizedBox(height: vSpaceMd),
+                                ],
 
-                      SizedBox(height: vSpaceMd),
+                                if (filteredReels.isNotEmpty) ...[
+                                  Text(
+                                    'استكشف الريلز',
+                                    style: theme.textTheme.titleMedium
+                                        ?.copyWith(fontWeight: FontWeight.w700),
+                                  ),
+                                  SizedBox(height: vSpaceXs),
+                                  _ExploreReelsGrid(items: filteredReels),
+                                  SizedBox(height: vSpaceMd),
+                                ],
 
-                      // ✅ سيكشن جديد: ريلز الاستكشاف (زي إنستا)
-                      Text(
-                        'استكشف الريلز',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      SizedBox(height: vSpaceXs),
+                                if (filteredStores.isNotEmpty) ...[
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        'متاجر قريبة منك',
+                                        style: theme.textTheme.titleMedium
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                      ),
+                                      TextButton(
+                                        onPressed: () {
+                                          // TODO: صفحة كل المتاجر
+                                        },
+                                        child: Text(
+                                          'عرض الكل',
+                                          style: theme.textTheme.bodySmall
+                                              ?.copyWith(
+                                                color: cs.secondary,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  SizedBox(height: vSpaceXs),
+                                  ListView.separated(
+                                    shrinkWrap: true,
+                                    physics:
+                                        const NeverScrollableScrollPhysics(),
+                                    itemCount: filteredStores.length,
+                                    separatorBuilder: (_, __) =>
+                                        SizedBox(height: height * 0.014),
+                                    itemBuilder: (context, index) {
+                                      return _NearbyStoreTile(
+                                        item: filteredStores[index],
+                                      );
+                                    },
+                                  ),
+                                ],
 
-                      const _ExploreReelsGrid(),
-
-                      SizedBox(height: vSpaceMd),
-
-                      // سيكشن: متاجر قريبة
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'متاجر قريبة منك',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
+                                SizedBox(height: vSpaceLg),
+                              ],
                             ),
                           ),
-                          TextButton(
-                            onPressed: () {
-                              // TODO: صفحة كل المتاجر
-                            },
-                            child: Text(
-                              'عرض الكل',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: colorScheme.secondary,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: vSpaceXs),
-
-                      ListView.separated(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: 4,
-                        separatorBuilder: (_, __) =>
-                            SizedBox(height: height * 0.014),
-                        itemBuilder: (context, index) {
-                          return _NearbyStoreTile(index: index);
-                        },
-                      ),
-
-                      SizedBox(height: vSpaceLg),
-                    ],
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-/// حقل البحث في الاستكشاف
+/// Search Bar
 class _ExploreSearchBar extends StatelessWidget {
+  final TextEditingController controller;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onClear;
+  final VoidCallback onOpenFilters;
+
+  const _ExploreSearchBar({
+    required this.controller,
+    required this.onChanged,
+    required this.onClear,
+    required this.onOpenFilters,
+  });
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -186,6 +399,8 @@ class _ExploreSearchBar extends StatelessWidget {
           SizedBox(width: width * 0.02),
           Expanded(
             child: TextField(
+              controller: controller,
+              onChanged: onChanged,
               decoration: InputDecoration(
                 isCollapsed: true,
                 border: InputBorder.none,
@@ -196,11 +411,35 @@ class _ExploreSearchBar extends StatelessWidget {
               ),
             ),
           ),
-          SizedBox(width: width * 0.02),
-          Icon(
-            Icons.tune,
-            size: height * 0.024,
-            color: theme.iconTheme.color?.withOpacity(0.9),
+
+          if (controller.text.trim().isNotEmpty) ...[
+            SizedBox(width: width * 0.01),
+            InkWell(
+              borderRadius: BorderRadius.circular(999),
+              onTap: onClear,
+              child: Padding(
+                padding: EdgeInsets.all(height * 0.006),
+                child: Icon(
+                  Icons.close,
+                  size: height * 0.022,
+                  color: theme.iconTheme.color?.withOpacity(0.85),
+                ),
+              ),
+            ),
+          ],
+
+          SizedBox(width: width * 0.01),
+          InkWell(
+            borderRadius: BorderRadius.circular(999),
+            onTap: onOpenFilters,
+            child: Padding(
+              padding: EdgeInsets.all(height * 0.006),
+              child: Icon(
+                Icons.tune,
+                size: height * 0.024,
+                color: theme.iconTheme.color?.withOpacity(0.9),
+              ),
+            ),
           ),
         ],
       ),
@@ -208,45 +447,43 @@ class _ExploreSearchBar extends StatelessWidget {
   }
 }
 
-/// Chips للفلاتر (كل شيء، قريب، تقييم عالي، جديد... الخ)
-class _ExploreFilterChips extends StatefulWidget {
-  const _ExploreFilterChips();
+/// Filter Chips
+class _ExploreFilterChips extends StatelessWidget {
+  final ExploreFilter selected;
+  final ValueChanged<ExploreFilter> onSelected;
 
-  @override
-  State<_ExploreFilterChips> createState() => _ExploreFilterChipsState();
-}
-
-class _ExploreFilterChipsState extends State<_ExploreFilterChips> {
-  int _selectedIndex = 0;
-
-  final _filters = const [
-    'الكل',
-    'قريب منك',
-    'تقييم عالي',
-    'جديد',
-    'موصى به لك',
-  ];
+  const _ExploreFilterChips({required this.selected, required this.onSelected});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
     final size = MediaQuery.sizeOf(context);
     final width = size.width;
     final height = size.height;
+
+    const filters = <(ExploreFilter, String)>[
+      (ExploreFilter.all, 'الكل'),
+      (ExploreFilter.near, 'قريب منك'),
+      (ExploreFilter.topRated, 'تقييم عالي'),
+      (ExploreFilter.newest, 'جديد'),
+      (ExploreFilter.recommended, 'موصى به لك'),
+    ];
 
     return SizedBox(
       height: height * 0.045,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        itemCount: _filters.length,
+        itemCount: filters.length,
         separatorBuilder: (_, __) => SizedBox(width: width * 0.02),
         itemBuilder: (context, index) {
-          final isSelected = index == _selectedIndex;
+          final f = filters[index].$1;
+          final label = filters[index].$2;
+          final isSelected = f == selected;
+
           return GestureDetector(
-            onTap: () {
-              setState(() => _selectedIndex = index);
-              // TODO: فعليًا طبّق الفلتر على النتائج
-            },
+            onTap: () => onSelected(f),
             child: Container(
               padding: EdgeInsets.symmetric(
                 horizontal: width * 0.04,
@@ -255,19 +492,22 @@ class _ExploreFilterChipsState extends State<_ExploreFilterChips> {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(height * 0.022),
                 color: isSelected
-                    ? theme.colorScheme.secondary
-                    : theme.chipTheme.backgroundColor,
+                    ? cs.secondary
+                    : cs.surfaceContainerHighest.withOpacity(
+                        theme.brightness == Brightness.light ? 0.55 : 0.16,
+                      ),
+                border: Border.all(
+                  color: cs.outline.withOpacity(isSelected ? 0.0 : 0.22),
+                ),
               ),
               child: Center(
                 child: Text(
-                  _filters[index],
+                  label,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: isSelected
-                        ? theme.chipTheme.secondaryLabelStyle?.color ??
-                              Colors.white
-                        : theme.chipTheme.labelStyle?.color ??
-                              theme.textTheme.bodyMedium?.color,
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                        ? cs.onSecondary
+                        : cs.onSurface.withOpacity(0.85),
+                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
                   ),
                 ),
               ),
@@ -279,44 +519,35 @@ class _ExploreFilterChipsState extends State<_ExploreFilterChips> {
   }
 }
 
-/// سكشن مجموعات (Collections)
+/// Collections List
 class _ExploreCollectionsList extends StatelessWidget {
-  const _ExploreCollectionsList();
+  final List<_CollectionItem> items;
+
+  const _ExploreCollectionsList({required this.items});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final shoofhaTheme = theme.extension<ShoofhaTheme>();
     final size = MediaQuery.sizeOf(context);
     final width = size.width;
     final height = size.height;
-
-    final collections = const [
-      ('موضة وأزياء', Icons.checkroom_outlined),
-      ('المطاعم والكافيهات', Icons.restaurant_menu),
-      ('الكترونيات وتقنية', Icons.devices_other),
-      ('الجمال والعناية', Icons.brush_outlined),
-    ];
 
     final radius = height * 0.026;
 
     return ListView.separated(
       scrollDirection: Axis.horizontal,
-      itemCount: collections.length,
+      itemCount: items.length,
       separatorBuilder: (_, __) => SizedBox(width: width * 0.04),
       itemBuilder: (context, index) {
-        final (title, iconData) = collections[index];
+        final item = items[index];
 
         final gradient = index.isEven
-            ? (shoofhaTheme?.primaryButtonGradient ??
-                  const LinearGradient(
-                    colors: [AppColors.navy, AppColors.purple],
-                  ))
+            ? const LinearGradient(colors: [AppColors.navy, AppColors.purple])
             : LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  theme.colorScheme.secondary,
+                  Theme.of(context).colorScheme.secondary,
                   AppColors.purple.withOpacity(0.9),
                 ],
               );
@@ -332,13 +563,13 @@ class _ExploreCollectionsList extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(iconData, size: height * 0.04, color: Colors.white),
+                Icon(item.icon, size: height * 0.04, color: Colors.white),
                 SizedBox(height: height * 0.012),
                 Text(
-                  title,
+                  item.title,
                   style: theme.textTheme.titleMedium?.copyWith(
                     color: Colors.white,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
                 SizedBox(height: height * 0.006),
@@ -355,7 +586,7 @@ class _ExploreCollectionsList extends StatelessWidget {
                     'استكشاف الآن',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: Colors.white,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
@@ -368,49 +599,40 @@ class _ExploreCollectionsList extends StatelessWidget {
   }
 }
 
-/// ✅ Grid ريلز الاستكشاف (زي إنستا)
+/// Reels Grid
 class _ExploreReelsGrid extends StatelessWidget {
-  const _ExploreReelsGrid();
+  final List<_ReelItem> items;
+
+  const _ExploreReelsGrid({required this.items});
 
   @override
   Widget build(BuildContext context) {
-    final _ = Theme.of(context);
+    // ignore: unused_local_variable
+    final theme = Theme.of(context);
     final size = MediaQuery.sizeOf(context);
     final width = size.width;
     final height = size.height;
 
-    // لو الشاشة أوسع (تابلت/ويب) بنزود عدد الأعمدة
     final crossAxisCount = width >= 900 ? 4 : (width >= 600 ? 3 : 2);
-
     final radius = height * 0.028;
-
-    // Dummy data بسيطة للريلز
-    final reels = const [
-      ('Coffee Mood', 'خصم على المشروبات الباردة', AppColors.navy),
-      ('FitZone Gym', 'اشتراك + شهر مجاناً', AppColors.purple),
-      ('Tech Corner', 'عروض باور بانك وسماعات', AppColors.teal),
-      ('Rose Home', 'ديكورات جديدة للبيت', Color(0xFFB23A48)),
-      ('Gifts Box', 'هدايا جاهزة لكل مناسبة', Color(0xFF3D155F)),
-      ('Burger Hub', 'برجر مع عرض مميز', Color(0xFFBF360C)),
-    ];
 
     return GridView.builder(
       physics: const NeverScrollableScrollPhysics(),
       shrinkWrap: true,
-      itemCount: reels.length,
+      itemCount: items.length,
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: crossAxisCount,
         crossAxisSpacing: width * 0.02,
         mainAxisSpacing: height * 0.012,
-        childAspectRatio: 9 / 16, // شكل ريل vertical
+        childAspectRatio: 9 / 16,
       ),
       itemBuilder: (context, index) {
-        final (store, title, color) = reels[index];
+        final item = items[index];
         return _ReelPreviewCard(
           radius: radius,
-          storeName: store,
-          title: title,
-          baseColor: color,
+          storeName: item.store,
+          title: item.title,
+          baseColor: item.color,
         );
       },
     );
@@ -441,7 +663,6 @@ class _ReelPreviewCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(radius),
       child: Stack(
         children: [
-          // خلفية gradient تشبه فيديو
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -454,8 +675,6 @@ class _ReelPreviewCard extends StatelessWidget {
               ),
             ),
           ),
-
-          // تدرج اسود/شفاف للنص
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -469,36 +688,31 @@ class _ReelPreviewCard extends StatelessWidget {
               ),
             ),
           ),
-
-          // محتوى داخل الكرت
           Padding(
             padding: EdgeInsets.all(width * 0.025),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // اسم المتجر فوق
                 Text(
                   storeName,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: Colors.white,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w800,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const Spacer(),
-
                 Text(
                   title,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: Colors.white,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w600,
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
                 SizedBox(height: height * 0.004),
-
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -514,6 +728,7 @@ class _ReelPreviewCard extends StatelessWidget {
                           'رييل',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: Colors.white.withOpacity(0.9),
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ],
@@ -528,15 +743,12 @@ class _ReelPreviewCard extends StatelessWidget {
               ],
             ),
           ),
-
-          // GestureDetector لو حابين لاحقاً نفتح شاشة ريلز كاملة
           Positioned.fill(
             child: Material(
               type: MaterialType.transparency,
               child: InkWell(
                 onTap: () {
-                  // TODO: افتح شاشة ريلز كاملة
-                  // ممكن تعيد استخدام HomeScreen بتعديل بسيط (نمرر index)
+                  // TODO: افتح شاشة ريلز كاملة لاحقاً
                 },
               ),
             ),
@@ -547,38 +759,22 @@ class _ReelPreviewCard extends StatelessWidget {
   }
 }
 
-/// عنصر لمتجر قريب
+/// Store Tile
 class _NearbyStoreTile extends StatelessWidget {
-  final int index;
+  final _StoreItem item;
 
-  const _NearbyStoreTile({required this.index});
+  const _NearbyStoreTile({required this.item});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final cs = theme.colorScheme;
+
     final size = MediaQuery.sizeOf(context);
     final width = size.width;
     final height = size.height;
 
     final radius = height * 0.022;
-
-    final storeName = [
-      'Coffee Mood',
-      'FitZone Gym',
-      'Tech Corner',
-      'Rose Home Decor',
-    ][index % 4];
-
-    final category = [
-      'كافيه',
-      'نادي رياضي',
-      'الكترونيات',
-      'ديكور منزلي',
-    ][index % 4];
-
-    final distanceKm = [1.2, 3.5, 5.4, 2.1][index % 4];
-    final rating = [4.7, 4.5, 4.3, 4.8][index % 4];
 
     return Container(
       decoration: BoxDecoration(
@@ -597,7 +793,6 @@ class _NearbyStoreTile extends StatelessWidget {
       padding: EdgeInsets.all(width * 0.035),
       child: Row(
         children: [
-          // صورة مصغرة Placeholder
           Container(
             width: height * 0.07,
             height: height * 0.07,
@@ -618,22 +813,22 @@ class _NearbyStoreTile extends StatelessWidget {
             ),
           ),
           SizedBox(width: width * 0.04),
-
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  storeName,
+                  item.name,
                   style: theme.textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
                 SizedBox(height: height * 0.004),
                 Text(
-                  category,
+                  item.category,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.textTheme.bodySmall?.color?.withOpacity(0.7),
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 SizedBox(height: height * 0.004),
@@ -646,23 +841,24 @@ class _NearbyStoreTile extends StatelessWidget {
                     ),
                     SizedBox(width: width * 0.008),
                     Text(
-                      rating.toStringAsFixed(1),
+                      item.rating.toStringAsFixed(1),
                       style: theme.textTheme.bodySmall?.copyWith(
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                     SizedBox(width: width * 0.02),
                     Icon(
                       Icons.location_on_outlined,
                       size: height * 0.022,
-                      color: colorScheme.secondary,
+                      color: cs.secondary,
                     ),
                     Text(
-                      '${distanceKm.toStringAsFixed(1)} كم',
+                      '${item.distanceKm.toStringAsFixed(1)} كم',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.textTheme.bodySmall?.color?.withOpacity(
                           0.8,
                         ),
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
@@ -670,7 +866,6 @@ class _NearbyStoreTile extends StatelessWidget {
               ],
             ),
           ),
-
           Icon(
             Icons.chevron_left,
             size: height * 0.030,
@@ -680,4 +875,76 @@ class _NearbyStoreTile extends StatelessWidget {
       ),
     );
   }
+}
+
+class _EmptyExplore extends StatelessWidget {
+  final String query;
+
+  const _EmptyExplore({required this.query});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    final size = MediaQuery.sizeOf(context);
+    final w = size.width;
+    final h = size.height;
+
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: w * 0.08),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.search_off_rounded,
+              size: w * 0.16,
+              color: cs.onSurface.withOpacity(0.55),
+            ),
+            SizedBox(height: h * 0.015),
+            Text(
+              'ما في نتائج',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            SizedBox(height: h * 0.008),
+            Text(
+              query.isEmpty
+                  ? 'جرّب تدور على متجر أو منتج.'
+                  : 'ما لقينا نتائج لـ "$query".',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: cs.onSurface.withOpacity(0.7),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Models
+class _CollectionItem {
+  final String title;
+  final IconData icon;
+  const _CollectionItem(this.title, this.icon);
+}
+
+class _ReelItem {
+  final String store;
+  final String title;
+  final Color color;
+  const _ReelItem(this.store, this.title, this.color);
+}
+
+class _StoreItem {
+  final String name;
+  final String category;
+  final double distanceKm;
+  final double rating;
+  const _StoreItem(this.name, this.category, this.distanceKm, this.rating);
 }

@@ -21,6 +21,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   final PageController _pageController = PageController();
   HomeFeedTab _currentTab = HomeFeedTab.explore;
 
+  // ✅ مؤقت: بدنا نربطه لاحقاً بالـ messages_controller
+  // (مثلاً ref.watch(messagesControllerProvider).unreadCount)
+  final int _unreadCountMock = 3;
+
   final List<_Reel> _dummyReels = [
     _Reel(
       storeId: 'coffee-mood',
@@ -110,6 +114,170 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   void _openStore(_Reel reel, BuildContext context) {
     context.pushNamed('store', pathParameters: {'id': reel.storeId});
+  }
+
+  void _openShareSheet(BuildContext context, _Reel reel) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final h = Responsive.height(context);
+    final w = Responsive.width(context);
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        final radius = h * 0.03;
+
+        return Container(
+          padding: EdgeInsets.fromLTRB(
+            w * 0.06,
+            h * 0.015,
+            w * 0.06,
+            h * 0.02 + MediaQuery.of(context).viewPadding.bottom,
+          ),
+          decoration: BoxDecoration(
+            color: cs.surface,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(radius)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(
+                  theme.brightness == Brightness.light ? 0.08 : 0.5,
+                ),
+                blurRadius: h * 0.03,
+                offset: Offset(0, -h * 0.01),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: w * 0.12,
+                  height: h * 0.006,
+                  decoration: BoxDecoration(
+                    color: cs.onSurface.withOpacity(0.18),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+              ),
+              SizedBox(height: h * 0.02),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'مشاركة',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+
+              Text(
+                'شارك عرض "${reel.storeName}" مع أصحابك.',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: cs.onSurface.withOpacity(0.7),
+                ),
+              ),
+
+              SizedBox(height: h * 0.02),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: _ShareAction(
+                      label: 'نسخ الرابط',
+                      icon: Icons.link,
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        ScaffoldMessenger.of(context).clearSnackBars();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('تم نسخ الرابط'),
+                            duration: Duration(milliseconds: 900),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  SizedBox(width: w * 0.03),
+                  Expanded(
+                    child: _ShareAction(
+                      label: 'واتساب',
+                      icon: Icons.chat_bubble_outline,
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        ScaffoldMessenger.of(context).clearSnackBars();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('قريباً'),
+                            duration: Duration(milliseconds: 900),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+
+              SizedBox(height: h * 0.015),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: _ShareAction(
+                      label: 'انستغرام',
+                      icon: Icons.camera_alt_outlined,
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        ScaffoldMessenger.of(context).clearSnackBars();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('قريباً'),
+                            duration: Duration(milliseconds: 900),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  SizedBox(width: w * 0.03),
+                  Expanded(
+                    child: _ShareAction(
+                      label: 'المزيد',
+                      icon: Icons.more_horiz,
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        ScaffoldMessenger.of(context).clearSnackBars();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('قريباً'),
+                            duration: Duration(milliseconds: 900),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+
+              SizedBox(height: h * 0.01),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -252,9 +420,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                                 ?.copyWith(color: Colors.white),
                                           ),
                                           SizedBox(width: w * 0.008),
-                                          const Icon(
+                                          Icon(
                                             Icons.location_on_outlined,
-                                            size: 14,
+                                            size: h * 0.02,
                                             color: Colors.white,
                                           ),
                                         ],
@@ -342,6 +510,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               isActive: false,
                               onTap: () async {
                                 HapticFeedback.selectionClick();
+                                _openShareSheet(context, reel);
                               },
                               label: 'مشاركة',
                               activeColor: Colors.white,
@@ -382,42 +551,75 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         _TopTabChip(
                           label: 'المتابَعون',
                           selected: _currentTab == HomeFeedTab.following,
-                          onTap: () {
-                            setState(() => _currentTab = HomeFeedTab.following);
-                          },
+                          onTap: () => setState(
+                            () => _currentTab = HomeFeedTab.following,
+                          ),
                         ),
                         SizedBox(width: w * 0.008),
                         _TopTabChip(
                           label: 'استكشاف',
                           selected: _currentTab == HomeFeedTab.explore,
-                          onTap: () {
-                            setState(() => _currentTab = HomeFeedTab.explore);
-                          },
+                          onTap: () =>
+                              setState(() => _currentTab = HomeFeedTab.explore),
                         ),
                       ],
                     ),
                   ),
                   SizedBox(width: w * 0.04),
+
+                  // ✅ messages icon + unread badge
                   InkWell(
                     onTap: () async {
                       final allowed = await requireLogin(context);
                       if (!allowed) return;
                       if (!mounted) return;
-
                       context.pushNamed('messages');
                     },
                     borderRadius: BorderRadius.circular(h * 0.014),
-                    child: Container(
-                      padding: EdgeInsets.all(h * 0.008),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.35),
-                        borderRadius: BorderRadius.circular(h * 0.014),
-                      ),
-                      child: Icon(
-                        Icons.chat_bubble_outline,
-                        color: Colors.white,
-                        size: h * 0.026,
-                      ),
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(h * 0.008),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.35),
+                            borderRadius: BorderRadius.circular(h * 0.014),
+                          ),
+                          child: Icon(
+                            Icons.chat_bubble_outline,
+                            color: Colors.white,
+                            size: h * 0.026,
+                          ),
+                        ),
+                        if (_unreadCountMock > 0)
+                          Positioned(
+                            top: -h * 0.006,
+                            right: -w * 0.01,
+                            child: Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: w * 0.018,
+                                vertical: h * 0.0035,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.orange,
+                                borderRadius: BorderRadius.circular(999),
+                                border: Border.all(
+                                  color: Colors.black.withValues(alpha: 0.35),
+                                  width: h * 0.0012,
+                                ),
+                              ),
+                              child: Text(
+                                _unreadCountMock > 99
+                                    ? '99+'
+                                    : '$_unreadCountMock',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                 ],
@@ -524,6 +726,65 @@ class _CircleIconButton extends StatelessWidget {
           ).textTheme.bodySmall?.copyWith(color: Colors.white),
         ),
       ],
+    );
+  }
+}
+
+class _ShareAction extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _ShareAction({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    final h = Responsive.height(context);
+    final w = Responsive.width(context);
+
+    final radius = h * 0.02;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(radius),
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: w * 0.04,
+          vertical: h * 0.014,
+        ),
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerHighest.withOpacity(
+            theme.brightness == Brightness.light ? 0.55 : 0.16,
+          ),
+          borderRadius: BorderRadius.circular(radius),
+          border: Border.all(
+            color: cs.outline.withOpacity(
+              theme.brightness == Brightness.light ? 0.18 : 0.28,
+            ),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: cs.secondary, size: w * 0.06),
+            SizedBox(width: w * 0.02),
+            Text(
+              label,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w800,
+                color: cs.onSurface.withOpacity(0.85),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

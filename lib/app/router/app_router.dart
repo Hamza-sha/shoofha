@@ -8,20 +8,22 @@ import 'package:shoofha/features/auth/presentation/screens/signup_screen.dart';
 import 'package:shoofha/features/auth/presentation/screens/otp_screen.dart';
 import 'package:shoofha/features/auth/presentation/screens/choose_interests_screen.dart';
 
+import 'package:shoofha/features/main_shell/presentation/main_shell.dart';
+
+import 'package:shoofha/features/settings/presentation/screens/settings_screen.dart';
+import 'package:shoofha/features/messaging/presentation/screens/notifications_screen.dart';
+
+import 'package:shoofha/features/messages/presentation/screens/messages_inbox_screen.dart';
+import 'package:shoofha/features/messages/presentation/screens/chat_screen.dart';
+
 import 'package:shoofha/features/commerce/presentation/screens/my_orders_screen.dart';
 import 'package:shoofha/features/commerce/presentation/screens/checkout_screen.dart';
 import 'package:shoofha/features/commerce/presentation/screens/order_success_screen.dart';
 
-import 'package:shoofha/features/main_shell/presentation/main_shell.dart';
-import 'package:shoofha/features/messaging/presentation/screens/notifications_screen.dart';
-import 'package:shoofha/features/settings/presentation/screens/settings_screen.dart';
 import 'package:shoofha/features/social/presentation/screens/favorites_screen.dart';
 
 import 'package:shoofha/features/store/presentation/screens/store_profile_screen.dart';
 import 'package:shoofha/features/store/presentation/screens/product_details_screen.dart';
-
-import 'package:shoofha/features/messages/presentation/screens/messages_inbox_screen.dart';
-import 'package:shoofha/features/messages/presentation/screens/chat_screen.dart';
 
 import 'package:shoofha/features/auth/application/auth_notifier.dart';
 
@@ -33,7 +35,6 @@ final GoRouter appRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
   initialLocation: '/splash',
   refreshListenable: authNotifier,
-
   redirect: (context, state) {
     final isLoggedIn = authNotifier.isLoggedIn;
     final hasCompletedInterests = authNotifier.hasCompletedInterests;
@@ -68,12 +69,11 @@ final GoRouter appRouter = GoRouter(
     if (isLoggedIn &&
         hasCompletedInterests &&
         authFlowRoutes.contains(location)) {
-      return '/app';
+      return '/app'; // ✅ بدل /app/home
     }
 
     return null;
   },
-
   routes: [
     GoRoute(
       path: '/splash',
@@ -106,6 +106,7 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const ChooseInterestsScreen(),
     ),
 
+    // ✅ MainShell كـ Route عادي (بدون child)
     GoRoute(
       path: '/app',
       name: 'app',
@@ -168,13 +169,11 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const CheckoutScreen(),
     ),
 
-    // ✅ نجاح الطلب (لازم extra من نوع OrderSuccessArgs)
     GoRoute(
       path: '/order-success',
       name: 'order-success',
       builder: (context, state) {
         final extra = state.extra;
-
         final args = extra is OrderSuccessArgs
             ? extra
             : const OrderSuccessArgs(orderId: 'SH-UNKNOWN', total: 0);

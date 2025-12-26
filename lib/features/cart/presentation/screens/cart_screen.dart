@@ -49,10 +49,8 @@ class CartScreen extends ConsumerWidget {
               : Column(
                   children: [
                     SizedBox(height: vSpaceSm),
-
                     _CartHeaderSummary(itemCount: totalItems),
                     SizedBox(height: vSpaceSm),
-
                     Expanded(
                       child: ListView.separated(
                         itemCount: cartState.items.length,
@@ -63,14 +61,11 @@ class CartScreen extends ConsumerWidget {
                         },
                       ),
                     ),
-
                     SizedBox(height: vSpaceSm),
-
                     _CartBottomSummary(
                       cartState: cartState,
                       totalItems: totalItems,
                     ),
-
                     SizedBox(height: vSpaceMd * 0.6),
                   ],
                 ),
@@ -78,6 +73,48 @@ class CartScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// ✅ SnackBar سريع ومرتب + Undo آمن (بدون ref داخل الـ callback)
+void _showQuickUndoSnackBar({
+  required BuildContext context,
+  required String message,
+  required String actionLabel,
+  required VoidCallback onUndo,
+}) {
+  final theme = Theme.of(context);
+  final size = MediaQuery.sizeOf(context);
+  final height = size.height;
+
+  final messenger = ScaffoldMessenger.of(context);
+  messenger.clearSnackBars();
+
+  messenger.showSnackBar(
+    SnackBar(
+      content: Text(
+        message,
+        style: theme.textTheme.bodyMedium?.copyWith(
+          color: theme.colorScheme.onInverseSurface,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      duration: const Duration(milliseconds: 1200),
+      behavior: SnackBarBehavior.floating,
+      margin: EdgeInsets.symmetric(
+        horizontal: height * 0.02,
+        vertical: height * 0.02,
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(height * 0.018),
+      ),
+      backgroundColor: theme.colorScheme.inverseSurface,
+      action: SnackBarAction(
+        label: actionLabel,
+        textColor: theme.colorScheme.secondary,
+        onPressed: onUndo,
+      ),
+    ),
+  );
 }
 
 /// حالة السلة الفارغة
@@ -90,12 +127,15 @@ class _EmptyCart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final shoofhaTheme = theme.extension<ShoofhaTheme>();
     final colorScheme = theme.colorScheme;
+
     final size = MediaQuery.sizeOf(context);
     final width = size.width;
     final height = size.height;
 
     final vSpaceXs = height * 0.012;
+    final radius = height * 0.02;
 
     return Center(
       child: Column(
@@ -136,15 +176,50 @@ class _EmptyCart extends StatelessWidget {
             ),
           ),
           SizedBox(height: vSpaceMd),
+
           SizedBox(
-            width: width * 0.6,
-            height: height * 0.055,
-            child: FilledButton(
-              onPressed: () => context.go('/app'),
-              style: FilledButton.styleFrom(
-                backgroundColor: colorScheme.secondary,
+            width: width * 0.7,
+            height: height * 0.058,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(radius),
+                gradient:
+                    shoofhaTheme?.primaryButtonGradient ??
+                    const LinearGradient(
+                      colors: [AppColors.navy, AppColors.purple],
+                    ),
               ),
-              child: const Text('ابدأ التسوق'),
+              child: FilledButton(
+                onPressed: () => context.go('/app'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(radius),
+                  ),
+                ),
+                child: Text(
+                  'ابدأ التسوق',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          SizedBox(height: height * 0.012),
+
+          TextButton(
+            onPressed: () => context.go('/app'),
+            child: Text(
+              'استكشاف الريلز',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: colorScheme.secondary,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],
@@ -219,7 +294,8 @@ class _CartItemCard extends ConsumerWidget {
     final radius = height * 0.020;
     final product = item.product;
 
-    final controller = ref.read(cartControllerProvider.notifier);
+    // ✅ خذ notifier مرة واحدة (آمن) بدل ref داخل Undo
+    final cartNotifier = ref.read(cartControllerProvider.notifier);
 
     return Container(
       decoration: BoxDecoration(
@@ -262,7 +338,6 @@ class _CartItemCard extends ConsumerWidget {
             ),
           ),
           SizedBox(width: width * 0.03),
-
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -282,25 +357,23 @@ class _CartItemCard extends ConsumerWidget {
                     _CartIconButton(
                       icon: Icons.delete_outline_rounded,
                       onPressed: () {
-                        final removedItem = item;
-                        controller.removeItem(product.id);
+                        // ✅ Snapshot آمن
+                        final removedProduct = item.product;
+                        final removedQty = item.quantity;
 
-                        ScaffoldMessenger.of(context).clearSnackBars();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('تم حذف ${product.name}'),
-                            action: SnackBarAction(
-                              label: 'تراجع',
-                              onPressed: () {
-                                ref
-                                    .read(cartControllerProvider.notifier)
-                                    .addItem(
-                                      removedItem.product,
-                                      quantity: removedItem.quantity,
-                                    );
-                              },
-                            ),
-                          ),
+                        cartNotifier.removeItem(removedProduct.id);
+
+                        _showQuickUndoSnackBar(
+                          context: context,
+                          message: 'تم حذف ${removedProduct.name}',
+                          actionLabel: 'تراجع',
+                          onUndo: () {
+                            // ✅ بدون ref نهائياً -> ما في unmounted error
+                            cartNotifier.addItem(
+                              removedProduct,
+                              quantity: removedQty,
+                            );
+                          },
                         );
                       },
                     ),
@@ -314,7 +387,6 @@ class _CartItemCard extends ConsumerWidget {
                   ),
                 ),
                 SizedBox(height: height * 0.010),
-
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -324,7 +396,7 @@ class _CartItemCard extends ConsumerWidget {
                           icon: Icons.remove_rounded,
                           onPressed: item.quantity > 1
                               ? () {
-                                  controller.updateQuantity(
+                                  cartNotifier.updateQuantity(
                                     product.id,
                                     item.quantity - 1,
                                   );
@@ -345,7 +417,7 @@ class _CartItemCard extends ConsumerWidget {
                         _QuantityButton(
                           icon: Icons.add_rounded,
                           onPressed: () {
-                            controller.updateQuantity(
+                            cartNotifier.updateQuantity(
                               product.id,
                               item.quantity + 1,
                             );
