@@ -517,6 +517,7 @@ class _UndoRemoval {
   _UndoRemoval({
     required this.productName,
     required this.undo,
+    // ignore: unused_element_parameter
     this.didUndo = false, // ✅ أهم تعديل لحل الخطأ
   });
 }

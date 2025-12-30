@@ -1,27 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:shoofha/core/theme/app_colors.dart';
 import 'package:shoofha/features/store/domain/store_models.dart';
 import 'package:shoofha/core/auth/guest_guard.dart';
 import 'package:shoofha/features/main_shell/presentation/main_shell.dart';
 
-class StoreProfileScreen extends StatefulWidget {
+// ✅ NEW: Feed (Following integration)
+import 'package:shoofha/features/feed/application/feed_controller.dart';
+
+class StoreProfileScreen extends ConsumerStatefulWidget {
   final String storeId;
 
   const StoreProfileScreen({super.key, required this.storeId});
 
   @override
-  State<StoreProfileScreen> createState() => _StoreProfileScreenState();
+  ConsumerState<StoreProfileScreen> createState() => _StoreProfileScreenState();
 }
 
-class _StoreProfileScreenState extends State<StoreProfileScreen> {
+class _StoreProfileScreenState extends ConsumerState<StoreProfileScreen> {
   late StoreModel store;
   late List<StoreProduct> storeProducts;
 
   int _currentTabIndex = 0; // 0: Reels, 1: Products, 2: Reviews
   bool _isFavorite = false;
-  bool _isFollowing = false;
 
   @override
   void initState() {
@@ -51,6 +55,7 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
     if (!allowed) return;
     if (!mounted) return;
 
+    HapticFeedback.lightImpact();
     setState(() => _isFavorite = !_isFavorite);
 
     ScaffoldMessenger.of(context).clearSnackBars();
@@ -64,18 +69,30 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
     );
   }
 
-  Future<void> _toggleFollow() async {
+  Future<void> _toggleFollow(bool isFollowingNow) async {
     final allowed = await requireLogin(context);
     if (!allowed) return;
     if (!mounted) return;
 
-    setState(() => _isFollowing = !_isFollowing);
+    HapticFeedback.lightImpact();
+
+    final feed = ref.read(feedControllerProvider);
+    final next = {...feed.followingStoreIds};
+
+    if (isFollowingNow) {
+      next.remove(store.id);
+    } else {
+      next.add(store.id);
+    }
+
+    // ✅ هذا هو الربط الحقيقي مع التاب "المتابَعون"
+    ref.read(feedControllerProvider.notifier).setFollowingStores(next);
 
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          _isFollowing ? 'تمت متابعة المتجر ✅' : 'تم إلغاء متابعة المتجر',
+          isFollowingNow ? 'تم إلغاء متابعة المتجر' : 'تمت متابعة المتجر ✅',
         ),
         duration: const Duration(seconds: 2),
       ),
@@ -116,7 +133,14 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
     final horizontalPadding = width * 0.06;
     final vSpaceMd = height * 0.024;
 
-    final followBg = _isFollowing
+    // ✅ Source of truth: FeedController followingStoreIds
+    final isFollowing = ref.watch(
+      feedControllerProvider.select(
+        (s) => s.followingStoreIds.contains(store.id),
+      ),
+    );
+
+    final followBg = isFollowing
         ? AppColors.teal.withOpacity(0.88)
         : AppColors.navy;
     final followFg = Colors.white;
@@ -154,7 +178,7 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                             child: SizedBox(
                               height: height * 0.055,
                               child: ElevatedButton(
-                                onPressed: _toggleFollow,
+                                onPressed: () => _toggleFollow(isFollowing),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: followBg,
                                   foregroundColor: followFg,
@@ -163,7 +187,7 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                                     borderRadius: BorderRadius.circular(
                                       height * 0.018,
                                     ),
-                                    side: _isFollowing
+                                    side: isFollowing
                                         ? BorderSide(
                                             color: Colors.white.withOpacity(
                                               0.35,
@@ -174,7 +198,7 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                                   ),
                                 ),
                                 child: Text(
-                                  _isFollowing ? 'متابَع' : 'متابعة المتجر',
+                                  isFollowing ? 'متابَع' : 'متابعة المتجر',
                                 ),
                               ),
                             ),

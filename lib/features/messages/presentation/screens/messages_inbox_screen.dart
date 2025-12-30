@@ -32,7 +32,7 @@ class _MessagesInboxScreenState extends State<MessagesInboxScreen> {
     final w = Responsive.width(context);
     final h = Responsive.height(context);
     final theme = Theme.of(context);
-    final cs = theme.colorScheme;
+    final _ = theme.colorScheme;
 
     final conversations = _dummyConversations;
 
